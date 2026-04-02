@@ -1,0 +1,190 @@
+<div class="page-container" *ngIf="annonce">
+
+  <div class="detail-header">
+    <a [routerLink]="origin === 'dashboard' ? '/app/dashboard' : '/app/feed'" class="back-link">
+      <i class="ri-arrow-left-line"></i>
+      Retour au {{ origin === 'dashboard' ? 'Tableau de Bord' : 'fil' }}
+    </a>
+
+    <div class="tag" *ngIf="annonce.categorie">{{ annonce.categorie.nom }}</div>
+
+    <h1>{{ annonce.titre }}</h1>
+
+    <div class="meta">
+      <img *ngIf="annonce.createur?.photoProfil" [src]="annonce.createur.photoProfil" class="avatar avatar--sm">
+
+      <span style="display: flex; align-items: center; gap: 4px;">
+        Par {{ annonce.createur?.prenom }} {{ annonce.createur?.nom }}
+        <i *ngFor="let b of annonce.createur?.badges"
+           [class]="b.icon"
+           [title]="b.label"
+           [style.color]="b.color"
+           style="font-size: 1.2em;"></i>
+      </span>
+
+      <span class="dot">•</span>
+      <span>Publié le {{ annonce.dateCreation | date:'dd/MM/yyyy' }}</span>
+    </div>
+  </div>
+
+  <div class="detail-layout">
+
+    <div class="main-col">
+      <section class="card">
+        <h2>Le besoin</h2>
+        <p class="description">{{ annonce.description }}</p>
+      </section>
+
+      <section class="card">
+        <h2>Discussion ({{ commentaires.length }})</h2>
+
+        <ng-container *ngIf="canViewComments; else lockedComments">
+          <div class="comment-form">
+            <img [src]="currentUser?.photoProfil" class="avatar">
+            <div class="input-wrapper">
+              <textarea [(ngModel)]="newCommentText" placeholder="Écrivez un message..."></textarea>
+              <button class="btn-primary btn-primary--accent" (click)="addComment()">Envoyer</button>
+            </div>
+          </div>
+          <div class="comments-list">
+            <div class="comment" *ngFor="let c of commentaires" [ngClass]="{'bot-message': c.contenu.startsWith('📢') || c.contenu.startsWith('🏃')}">
+
+              <img *ngIf="!(c.contenu.startsWith('📢') || c.contenu.startsWith('🏃'))" [src]="c.auteur.photoProfil" class="avatar">
+
+              <div class="avatar bot-avatar" *ngIf="c.contenu.startsWith('📢') || c.contenu.startsWith('🏃')">
+                <i class="ri-robot-2-line"></i>
+              </div>
+
+              <div class="comment-body">
+                <div class="comment-meta">
+
+                  <div style="display: flex; align-items: center; gap: 4px;" *ngIf="!(c.contenu.startsWith('📢') || c.contenu.startsWith('🏃'))">
+                    <strong>{{ c.auteur.prenom }} {{ c.auteur.nom }}</strong>
+
+                    <i *ngFor="let b of c.auteur?.badges"
+                       [class]="b.icon"
+                       [title]="b.label"
+                       [style.color]="b.color"
+                       style="font-size: 1.1em;"></i>
+                  </div>
+
+                  <strong *ngIf="c.contenu.startsWith('📢') || c.contenu.startsWith('🏃')" style="color: var(--accent);">
+                    LienUrbain Bot
+                  </strong>
+
+                  <span class="date">{{ formatRelativeDate(c.createdAt) }} à {{ c.createdAt | date:'HH:mm' }}</span>
+                </div>
+                <p>{{ c.contenu }}</p>
+              </div>
+            </div>
+          </div>
+        </ng-container>
+
+        <ng-template #lockedComments>
+          <div style="text-align: center; padding: var(--sp-8); color: var(--ink-60); background: var(--surface-2); border-radius: var(--r-md);">
+            <i class="ri-lock-line" style="font-size: 2rem; margin-bottom: var(--sp-2); display: block;"></i>
+            <p>Vous devez proposer votre aide pour voir les commentaires de cette annonce.</p>
+          </div>
+        </ng-template>
+      </section>
+    </div>
+
+    <div class="side-col">
+      <section class="card info-card">
+        <h3>Informations</h3>
+        <ul class="info-list">
+          <li>
+            <i class="ri-hand-heart-line"></i>
+            <div>
+              <strong>Type de service</strong>
+              <span>{{ annonce.estRemunere ? 'Rémunéré' : 'Bénévolat' }}</span>
+            </div>
+          </li>
+          <li>
+            <i class="ri-group-line"></i>
+            <div>
+              <strong>Aidants ({{ annonce.helpers?.length || 0 }}{{ annonce.maxHelpers ? ' / ' + annonce.maxHelpers : '' }})</strong>
+
+              <div class="avatar-stack mt-2">
+                <img *ngFor="let h of annonce.helpers" [src]="h.photoProfil" class="avatar avatar--sm stack-item" [title]="h.prenom">
+                <span *ngIf="!annonce.helpers?.length" style="font-size: var(--text-sm); color: var(--ink-60);">Soyez le premier !</span>
+              </div>
+            </div>
+          </li>
+        </ul>
+
+        <button class="btn-primary w-full mt-6"
+                *ngIf="!isAuthor && !isHelper"
+                (click)="proposerAide()"
+                [disabled]="isFull"
+                [style.background]="isFull ? 'var(--ink-30)' : 'var(--accent)'"
+                [style.cursor]="isFull ? 'not-allowed' : 'pointer'">
+          {{ isFull ? 'Équipe complète' : 'Aider mon voisin' }}
+          <i class="ri-hand-heart-line" *ngIf="!isFull"></i>
+        </button>
+        <div *ngIf="isHelper" class="mt-6">
+          <div style="text-align: center; color: var(--ok); font-weight: 500; margin-bottom: var(--sp-4);">
+            <i class="ri-checkbox-circle-line"></i> Vous avez proposé votre aide !
+          </div>
+          <button class="btn-primary btn-primary--ghost w-full" (click)="openWithdrawModal()">
+            Se désister <i class="ri-logout-box-r-line"></i>
+          </button>
+        </div>
+      </section>
+      <div class="right">
+        <div class="admin-actions mt-4 card" *ngIf="isAdmin">
+          <div class="text-xs uppercase color-ink-60 tracking-wide mb-2">
+            <i class="ri-shield-user-fill"></i> Modération
+          </div>
+          <button class="btn-destructive-outline w-full" (click)="openAdminDeleteModal()">
+            <i class="ri-delete-bin-line"></i> Supprimer définitivement
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-overlay" *ngIf="showWithdrawModal" (click)="closeWithdrawModal()">
+      <div class="modal-content" (click)="$event.stopPropagation()">
+        <h2>Confirmation de désistement</h2>
+        <p>Vous êtes sur le point de retirer votre offre d'aide pour cette annonce.</p>
+
+        <div class="form-group mt-6">
+          <label for="motif">Pouvez-vous préciser la raison ? (Optionnel)</label>
+          <textarea
+            id="motif"
+            [(ngModel)]="withdrawMotif"
+            rows="4"
+            placeholder="Ex: Je ne suis finalement plus disponible à cette date...">
+        </textarea>
+        </div>
+
+        <div class="modal-actions mt-8">
+          <button class="btn-primary btn-primary--ghost" (click)="closeWithdrawModal()" [disabled]="isLoading">
+            Annuler
+          </button>
+          <button class="btn-primary"
+                  style="background: var(--accent); color: white;"
+                  (click)="confirmWithdrawal()"
+                  [disabled]="isLoading">
+            <span *ngIf="!isLoading">Confirmer le désistement</span>
+            <span *ngIf="isLoading">Envoi en cours...</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-overlay" *ngIf="showAdminDeleteModal" (click)="closeAdminDeleteModal()">
+      <div class="modal-content" (click)="$event.stopPropagation()">
+        <h2>Action de Modération</h2>
+        <p>Êtes-vous sûr de vouloir supprimer définitivement cette annonce ? Cette action est immédiate et irréversible.</p>
+
+        <div class="modal-actions mt-6">
+          <button class="btn-primary btn-primary--ghost" (click)="closeAdminDeleteModal()">Annuler</button>
+          <button class="btn-primary" style="background: var(--accent); color: white;" (click)="confirmAdminDelete()">Confirmer la suppression</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</div>

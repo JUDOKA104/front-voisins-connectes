@@ -1,0 +1,22 @@
+/* Style du bouton profil dans la navbar */
+.nav-user {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  cursor: pointer;
+  padding: var(--sp-1) var(--sp-2);
+  border-radius: var(--r-md);
+  transition: background var(--duration-fast);
+  background: transparent;
+  border: none;
+}
+
+.nav-user:hover {
+  background: var(--ink-10);
+}
+
+.nav-user__name {
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--ink);
+}

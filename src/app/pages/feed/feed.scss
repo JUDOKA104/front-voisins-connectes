@@ -1,0 +1,184 @@
+.feed-container {
+  padding: var(--sp-12) 0;
+  max-width: var(--max-w-full);
+  margin: 0 auto;
+}
+
+.feed-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: var(--sp-10);
+  flex-wrap: wrap;
+  gap: var(--sp-4);
+
+  h1 {
+    font-size: var(--text-3xl);
+    margin-top: var(--sp-2);
+  }
+}
+
+.feed-filters {
+  display: flex;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-8);
+  overflow-x: auto;
+  padding-bottom: var(--sp-2);
+
+  /* Masquer la scrollbar sur les filtres */
+  &::-webkit-scrollbar { display: none; }
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.annonces-grid {
+  display: grid;
+  /* Grille responsive magique : 1 colonne sur mobile, plusieurs sur grand écran */
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: var(--sp-6);
+}
+
+/* LE DESIGN DE LA CARTE */
+.annonce-card {
+  background: var(--surface);
+  border-radius: var(--r-lg);
+  padding: var(--sp-6);
+  border: var(--border);
+  transition: transform var(--duration-base) var(--ease-out), box-shadow var(--duration-base) var(--ease-out), border-color var(--duration-fast);
+  display: flex;
+  flex-direction: column;
+  cursor: pointer;
+
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-md);
+    border-color: var(--accent-light);
+  }
+
+  &__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--sp-4);
+  }
+
+  &__title {
+    font-size: var(--text-xl);
+    margin-bottom: var(--sp-2);
+    /* Coupe le texte après 2 lignes */
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  &__excerpt {
+    color: var(--ink-60);
+    font-size: var(--text-base);
+    line-height: var(--leading-loose);
+    margin-bottom: var(--sp-6);
+    flex: 1;
+    /* Coupe le texte après 3 lignes */
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  &__footer {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3);
+    padding-top: var(--sp-4);
+    border-top: var(--border-mid);
+
+    .author-name {
+      font-size: var(--text-sm);
+      font-weight: 500;
+      color: var(--ink);
+    }
+
+    .meta-info {
+      margin-left: auto;
+      font-size: var(--text-xs);
+      color: var(--ink-60);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+
+      i { font-size: var(--text-sm); }
+    }
+  }
+}
+
+/* Le petit badge Bénévolat / Rémunéré */
+.status-badge {
+  font-size: 0.65rem;
+  font-weight: 600;
+  padding: var(--sp-1) var(--sp-2);
+  border-radius: var(--r-sm);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+  background: rgba(58, 125, 90, 0.1);
+  color: var(--ok); // Vert par défaut (Bénévolat)
+
+&--remunere {
+  background: var(--accent-light);
+  color: var(--accent-dark); // Terracotta si Rémunéré
+}
+}
+
+/* --- EMPTY STATE (Quand il n'y a pas d'annonces) --- */
+.feed-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: var(--sp-16) var(--sp-8);
+  margin-top: var(--sp-8);
+  background: var(--surface-2);
+  border: 1px dashed var(--border-mid);
+  border-radius: var(--r-xl);
+  animation: fadeUp 0.4s ease-out;
+
+  .empty-icon {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: var(--paper);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: var(--sp-6);
+    box-shadow: var(--shadow-sm);
+
+    i {
+      font-size: 2rem;
+      color: var(--ink-30);
+    }
+  }
+
+  h2 {
+    font-family: var(--font-display);
+    font-size: var(--text-2xl);
+    font-weight: 300;
+    margin-bottom: var(--sp-2);
+    color: var(--ink);
+  }
+
+  p {
+    color: var(--ink-60);
+    max-width: 400px;
+    line-height: var(--leading-loose);
+  }
+}
+
+.mt-6 {
+  margin-top: var(--sp-6);
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}

@@ -1,0 +1,79 @@
+<div class="feed-container">
+
+  <div class="feed-header">
+    <div>
+      <span class="tag">Quartier en direct</span>
+      <h1>Découvrez les besoins de vos voisins</h1>
+    </div>
+    <button class="btn-primary btn-primary--accent" routerLink="/app/annonces/new">
+      Publier une annonce <i class="ri-add-line"></i>
+    </button>
+  </div>
+
+  <div style="margin-bottom: var(--sp-8);">
+
+    <div class="feed-filters" style="margin-bottom: var(--sp-2);">
+      <button class="tag" [class.active]="!selectedCat" (click)="loadAnnonces(null)">Toutes catégories</button>
+      <button class="tag" *ngFor="let cat of categories" [class.active]="selectedCat === cat.id" (click)="loadAnnonces(cat.id)">
+        {{ cat.nom }}
+      </button>
+    </div>
+
+    <div class="feed-filters" style="border-top: 1px solid var(--border-mid); margin-bottom: var(--sp-2);">
+      <button class="tag" [class.active]="!showAccessibleOnly" (click)="setAccessibleFilter(false)">Toutes les annonces</button>
+      <button class="tag" [class.active]="showAccessibleOnly" (click)="setAccessibleFilter(true)">Places disponibles uniquement</button>
+    </div>
+
+    <button class="tag"
+            [class.active]="showCertifiedOnly"
+            (click)="toggleCertifiedFilter()"
+            style="display: flex; align-items: center;">
+      Membres certifiés <i class="ri-medal-fill" style="color: var(--warn); font-size: 1.1em;"></i>
+    </button>
+
+  </div>
+
+  <div class="annonces-grid" *ngIf="displayedAnnonces.length > 0">
+    <article *ngFor="let annonce of displayedAnnonces"
+             class="annonce-card"
+             [routerLink]="['/app/annonces', annonce.id]"
+             [state]="{ origin: 'feed' }">
+
+      <div class="annonce-card__header">
+        <span class="tag">{{ annonce.categorie?.nom }}</span>
+        <span class="status-badge" [class.status-badge--remunere]="annonce.estRemunere">
+          {{ annonce.estRemunere ? 'Rémunéré' : 'Bénévolat' }}
+        </span>
+      </div>
+
+      <h3 class="annonce-card__title">{{ annonce.titre }}</h3>
+      <p class="annonce-card__excerpt">{{ annonce.description }}</p>
+
+      <div class="annonce-card__footer">
+        <img [src]="annonce.createur?.photoProfil" [alt]="annonce.createur?.prenom" class="avatar avatar--sm">
+        <span class="author-name">
+          {{ annonce.createur?.prenom }} {{ annonce.createur?.nom }}
+          <i *ngFor="let b of annonce.createur?.badges"
+             [class]="b.icon"
+             [title]="b.label"
+             [style.color]="b.color"
+             style="margin-left: 4px; font-size: 1.1em;"></i>
+        </span>
+
+        <div class="meta-info">
+          <i class="ri-group-line"></i> {{ annonce.helpers?.length || 0 }}
+          <i class="ri-chat-3-line" style="margin-left: 8px;"></i> {{ annonce.commentaires?.length || 0 }}
+        </div>
+      </div>
+    </article>
+  </div>
+
+  <div class="feed-empty-state" *ngIf="displayedAnnonces.length === 0">
+    <div class="empty-icon">
+      <i class="ri-search-eye-line"></i>
+    </div>
+    <h2>C'est bien calme par ici...</h2>
+    <p>Aucune annonce ne correspond à vos filtres actuels ou toutes les demandes ont déjà trouvé de l'aide.</p>
+  </div>
+
+</div>

@@ -1,0 +1,110 @@
+<!-- ════════════════════════════════════════
+  PUBLIC HOMEPAGE — home.component.html
+  ════════════════════════════════════════ -->
+
+<!-- ── Navigation ─────────────────────── -->
+<nav class="nav" [class.scrolled]="isScrolled">
+  <a routerLink="/" class="nav__logo">
+    LienUrbain<span>.</span>
+  </a>
+  <span class="nav__spacer"></span>
+  <ul class="nav__links">
+    <li><a routerLink="/login">Connexion</a></li>
+    <li>
+      <a routerLink="/register" class="btn-primary btn-primary--accent">
+        Rejoindre
+      </a>
+    </li>
+  </ul>
+</nav>
+
+<main class="page-wrapper">
+
+  <!-- ── Hero ───────────────────────────── -->
+  <section class="hero">
+    <div class="hero__bg-grid"></div>
+
+    <div class="hero__content container">
+
+      <div class="hero__eyebrow">
+        <span class="tag">Paris · Île-de-France</span>
+        <span class="hero__eyebrow-line"></span>
+        <span class="hero__eyebrow-text">Plateforme de services entre voisins</span>
+      </div>
+
+      <h1 class="hero__heading">
+        <span class="hero__heading-line">Ce que vous cherchez</span>
+        <span class="hero__heading-line hero__heading-line--italic">existe déjà</span>
+        <span class="hero__heading-line">chez votre voisin.</span>
+      </h1>
+
+      <p class="hero__sub">
+        LienUrbain met en relation les habitants d'un même quartier pour échanger
+        des services — bricolage, jardinage, soutien scolaire, et bien plus encore.
+        Gratuitement ou rémunéré. Simplement humain.
+      </p>
+
+      <div class="hero__actions">
+        <a routerLink="/login" class="btn-primary btn-primary--accent hero__cta">
+          Publier une annonce
+        </a>
+        <a routerLink="/login" class="hero__discover">
+          Explorer les annonces
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </a>
+      </div>
+
+      <div class="hero__stats">
+        <div class="hero__stat" *ngFor="let stat of stats">
+          <span class="hero__stat-value">{{ stat.value }}</span>
+          <span class="hero__stat-label">{{ stat.label }}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="hero__marquee" aria-hidden="true">
+      <div class="hero__marquee-track">
+        <span *ngFor="let word of marqueeWords" class="hero__marquee-item">{{ word }}</span>
+        <span *ngFor="let word of marqueeWords" class="hero__marquee-item" aria-hidden="true">{{ word }}</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Value Proposition ──────────────── -->
+  <section class="values-section">
+    <div class="container">
+      <div class="values-grid">
+        <div class="values-intro">
+          <p class="values-intro__overline">Pourquoi Voisins Connectés</p>
+          <h2 class="values-intro__heading">
+            Le quartier<br>
+            <em>comme ressource.</em>
+          </h2>
+        </div>
+        <div class="value-item" *ngFor="let value of values">
+          <span class="value-item__number">{{ value.number }}</span>
+          <h3 class="value-item__title">{{ value.title }}</h3>
+          <p class="value-item__desc">{{ value.desc }}</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Footer ─────────────────────────── -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer__inner">
+        <span class="footer__logo">Voisins<span>.</span></span>
+        <p class="footer__copy">© 2026 LienUrbain — Plateforme de services de proximité</p>
+        <div class="footer__links">
+          <a routerLink="/about">À propos</a>
+          <a routerLink="/privacy">Confidentialité</a>
+          <a routerLink="/contact">Contact</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+</main>

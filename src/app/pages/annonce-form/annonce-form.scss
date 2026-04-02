@@ -1,0 +1,89 @@
+.form-container {
+  max-width: 800px; /* On réduit la largeur max pour que ce soit élégant */
+  margin: 0 auto;
+  padding: var(--sp-12) var(--gutter);
+}
+
+.form-header {
+  margin-bottom: var(--sp-8);
+
+  .back-link {
+    display: inline-flex; align-items: center; gap: var(--sp-2);
+    color: var(--ink-60); font-size: var(--text-sm); text-transform: uppercase;
+    letter-spacing: var(--tracking-wide); margin-bottom: var(--sp-6);
+    transition: color var(--duration-fast);
+    &:hover { color: var(--ink); }
+  }
+
+  h1 { font-size: var(--text-3xl); margin-bottom: var(--sp-2); }
+  .subtitle { color: var(--ink-60); font-size: var(--text-lg); }
+}
+
+.form-card {
+  background: var(--surface);
+  padding: var(--sp-8) var(--sp-10);
+  border-radius: var(--r-xl); /* Bords bien arrondis */
+  border: var(--border);
+  box-shadow: var(--shadow-sm);
+}
+
+.form-group {
+  margin-bottom: var(--sp-6);
+
+  label {
+    display: block; font-size: var(--text-sm); font-weight: 600;
+    margin-bottom: var(--sp-2); color: var(--ink);
+    text-transform: uppercase; letter-spacing: var(--tracking-wide);
+  }
+
+  input[type="text"], textarea, select {
+    width: 100%; padding: var(--sp-3) var(--sp-4);
+    background: var(--surface-2); border: var(--border-mid);
+    border-radius: var(--r-md); transition: border-color var(--duration-fast);
+    font-family: var(--font-ui); font-size: var(--text-base); color: var(--ink);
+
+    &:focus { outline: none; border-color: var(--accent); }
+  }
+
+  textarea { min-height: 150px; resize: vertical; }
+}
+
+.form-row {
+  display: flex; gap: var(--sp-6); flex-wrap: wrap;
+  .form-group { flex: 1; min-width: 250px; } /* Pour le responsive mobile */
+}
+
+/* Customisation du select (menu déroulant) */
+.select-wrapper {
+  position: relative;
+  select { appearance: none; padding-right: var(--sp-10); cursor: pointer; }
+  i { position: absolute; right: var(--sp-4); top: 50%; transform: translateY(-50%); pointer-events: none; color: var(--ink-60); }
+}
+
+/* Customisation de la case à cocher */
+.toggle-group { display: flex; flex-direction: column; }
+
+.checkbox-container {
+  display: flex; align-items: center; cursor: pointer; font-size: var(--text-base);
+  user-select: none; gap: var(--sp-3); text-transform: none !important;
+  letter-spacing: normal !important; font-weight: 400 !important; margin-top: 4px;
+
+  input { position: absolute; opacity: 0; cursor: pointer; height: 0; width: 0; }
+
+  .checkmark {
+    height: 24px; width: 24px; background-color: var(--surface-2);
+    border: var(--border-mid); border-radius: var(--r-sm);
+    display: flex; align-items: center; justify-content: center;
+    transition: background-color var(--duration-fast), border-color var(--duration-fast);
+  }
+
+  input:checked ~ .checkmark {
+    background-color: var(--accent); border-color: var(--accent);
+    &::after { content: "✓"; color: white; font-size: 14px; }
+  }
+}
+
+.form-actions {
+  margin-top: var(--sp-8); display: flex; justify-content: flex-end;
+  border-top: var(--border-mid); padding-top: var(--sp-6);
+}

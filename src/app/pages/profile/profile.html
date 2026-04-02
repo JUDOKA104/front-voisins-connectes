@@ -1,0 +1,69 @@
+<div class="container form-container">
+  <div class="form-header">
+    <h1>Mon Profil</h1>
+    <p class="subtitle">Gérez vos informations personnelles et vos paramètres de sécurité.</p>
+  </div>
+
+  <form (ngSubmit)="saveProfile()" class="form-card">
+    <div class="profile-photo-wrapper">
+      <img *ngIf="photoUrl" [src]="photoUrl" alt="Ma photo" class="avatar avatar--xl profile-avatar">
+
+      <button type="button" class="edit-photo-btn" (click)="photoUploadInput.click()" title="Modifier ma photo">
+        <i class="ri-edit-2-fill"></i>
+      </button>
+    </div>
+
+    <div class="badges-container" *ngIf="badges.length > 0">
+      <span class="profile-badge" *ngFor="let b of badges" [style.color]="b.color" [style.border-color]="b.color">
+        <i [class]="b.icon"></i> {{ b.label }}
+      </span>
+    </div>
+
+    <input type="file" #photoUploadInput (change)="onFileSelected($event)" accept="image/*" style="display: none;">
+
+    <div class="divider" style="margin: var(--sp-6) 0;"></div>
+    <div class="form-group">
+      <label>Adresse e-mail actuelle</label>
+      <input type="email" [(ngModel)]="email" name="email" (ngModelChange)="markAsDirty()">
+    </div>
+
+    <div class="divider" style="margin: var(--sp-8) 0;"></div>
+
+    <h3 style="margin-bottom: var(--sp-4);">Sécurité</h3>
+
+    <div class="form-group">
+      <label>Ancien mot de passe</label>
+      <input type="password" [(ngModel)]="oldPassword" name="oldPassword" placeholder="••••••••" (ngModelChange)="markAsDirty()">
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label>Nouveau mot de passe</label>
+        <input type="password" [(ngModel)]="newPassword" name="newPassword" placeholder="••••••••" (ngModelChange)="markAsDirty()">
+      </div>
+      <div class="form-group">
+        <label>Confirmer le mot de passe</label>
+        <input type="password" [(ngModel)]="confirmPassword" name="confirmPassword" placeholder="••••••••" (ngModelChange)="markAsDirty()">
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <button type="submit" class="btn-primary btn-primary--accent">Sauvegarder les modifications</button>
+    </div>
+  </form>
+  <div class="modal-overlay" *ngIf="showUnsavedModal">
+    <div class="modal-content">
+      <h2>Modifications non enregistrées</h2>
+      <p>Vous avez modifié votre profil mais vous n'avez pas sauvegardé. Voulez-vous vraiment quitter cette page et perdre vos modifications ?</p>
+
+      <div class="modal-actions mt-6">
+        <button type="button" class="btn-primary btn-primary--ghost" (click)="cancelLeave()">Rester</button>
+        <button type="button" class="btn-primary" style="background: var(--accent); color: white;" (click)="confirmLeave()">Quitter sans sauvegarder</button>
+      </div>
+    </div>
+  </div>
+  <div class="toast-notification" [class.show]="notificationMessage !== ''" [class.error]="isErrorNotification">
+    <i [class]="isErrorNotification ? 'ri-error-warning-line' : 'ri-checkbox-circle-line'"></i>
+    {{ notificationMessage }}
+  </div>
+</div>

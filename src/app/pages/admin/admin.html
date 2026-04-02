@@ -1,0 +1,129 @@
+<div class="container admin-container">
+  <div class="admin-header">
+    <h1><i class="ri-shield-user-fill" style="color: var(--accent);"></i> Espace Modération</h1>
+    <p>Vue globale et contrôle de la plateforme LienUrbain.</p>
+  </div>
+
+  <div class="stats-grid" *ngIf="stats">
+    <div class="stat-card">
+      <div class="stat-icon"><i class="ri-group-line"></i></div>
+      <div class="stat-content">
+        <span class="stat-label">Citoyens actifs</span>
+        <span class="stat-value">{{ stats.utilisateurs_actifs }}</span>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-icon"><i class="ri- megaphone-line"></i></div>
+      <div class="stat-content">
+        <span class="stat-label">Annonces en ligne</span>
+        <span class="stat-value">{{ stats.total_annonces }}</span>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-icon"><i class="ri- trophy-line"></i></div>
+      <div class="stat-content">
+        <span class="stat-label">Top Catégorie</span>
+        <span class="stat-value" *ngIf="stats.top_categories?.length">
+        {{ stats.top_categories[0].categorie }}
+      </span>
+      </div>
+    </div>
+  </div>
+
+  <div class="moderation-section card">
+    <h2>Rechercher un utilisateur</h2>
+
+    <div class="search-bar">
+      <input type="text" [(ngModel)]="searchQuery" (keyup.enter)="searchUsers()" placeholder="Email, nom ou prénom...">
+      <button class="btn-primary" (click)="searchUsers()" [disabled]="isSearching">
+        <i class="ri-search-line"></i> Rechercher
+      </button>
+      <button class="btn-primary btn-primary--ghost" (click)="viewBannedUsers()" [disabled]="isSearching">
+        <i class="ri-skull-line"></i> Voir les bannis
+      </button>
+    </div>
+
+    <div class="search-results" *ngIf="hasSearched">
+      <p class="results-count" *ngIf="!isSearching">{{ searchResults.length }} résultat(s) trouvé(s)</p>
+
+      <div class="user-card" *ngFor="let user of searchResults" [class.banned]="user.isBanned">
+        <div class="user-info">
+          <img [src]="user.photoProfil" class="avatar avatar--lg">
+          <div>
+            <h3>{{ user.prenom }} {{ user.nom }} <span class="badge" *ngIf="user.isBanned">BANNI</span></h3>
+            <p>{{ user.email }}</p>
+            <p *ngIf="user.isBanned && user.banMotif" style="color: var(--accent); font-size: var(--text-sm); margin-top: 4px;">
+              <i class="ri-error-warning-line"></i> Motif : {{ user.banMotif }}
+            </p>
+          </div>
+        </div>
+
+        <div class="user-actions">
+          <button class="btn-primary btn-primary--ghost" (click)="viewAnnonces(user.id)">
+            {{ selectedUserId === user.id ? 'Masquer' : 'Voir ses annonces' }}
+          </button>
+          <button class="btn-primary" [ngClass]="user.isBanned ? 'btn-unban' : 'btn-ban'" (click)="initToggleBan(user)">
+            <i class="ri-lock-unlock-line" *ngIf="user.isBanned"></i>
+            <i class="ri-forbid-line" *ngIf="!user.isBanned"></i>
+            {{ user.isBanned ? 'Débannir' : 'Bannir' }}
+          </button>
+        </div>
+
+        <div class="user-annonces-list" *ngIf="selectedUserId === user.id">
+          <div class="divider"></div>
+          <h4 style="margin: var(--sp-4) 0;">Annonces de {{ user.prenom }}</h4>
+
+          <p *ngIf="selectedUserAnnonces.length === 0" style="color: var(--ink-60);">Cet utilisateur n'a publié aucune annonce.</p>
+
+          <div class="annonce-mini-card" *ngFor="let a of selectedUserAnnonces">
+            <div class="annonce-meta">
+              <span class="tag">{{ a.categorie?.nom }}</span>
+              <strong>{{ a.titre }}</strong>
+              <span style="color: var(--ink-60); font-size: var(--text-sm);">{{ a.dateCreation | date:'shortDate' }}</span>
+            </div>
+            <div class="annonce-actions">
+              <a [routerLink]="['/app/annonces', a.id]" target="_blank" class="btn-icon" title="Voir l'annonce"><i class="ri-external-link-line"></i></a>
+              <button class="btn-icon delete" (click)="initDeleteAnnonce(a.id)" title="Supprimer (Admin)"><i class="ri-delete-bin-line"></i></button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" *ngIf="userToToggleBan" (click)="cancelToggleBan()">
+  <div class="modal-content" (click)="$event.stopPropagation()">
+    <h2>{{ userToToggleBan.isBanned ? 'Débannir' : 'Bannir' }} l'utilisateur ?</h2>
+    <p>Voulez-vous vraiment {{ userToToggleBan.isBanned ? 'débannir' : 'bannir' }} <strong>{{ userToToggleBan.prenom }} {{ userToToggleBan.nom }}</strong> ?</p>
+
+    <div class="form-group mt-4" *ngIf="!userToToggleBan.isBanned">
+      <label>Motif du bannissement (Optionnel)</label>
+      <input type="text" [(ngModel)]="banMotifText" placeholder="Ex: Comportement inapproprié...">
+    </div>
+
+    <div class="modal-actions mt-6">
+      <button class="btn-primary btn-primary--ghost" (click)="cancelToggleBan()">Annuler</button>
+      <button class="btn-primary"
+              [style.background]="userToToggleBan.isBanned ? 'var(--ok)' : 'var(--accent)'"
+              style="color: white;"
+              (click)="confirmToggleBan()">
+        {{ userToToggleBan.isBanned ? 'Oui, débannir' : 'Oui, bannir' }}
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" *ngIf="annonceToDeleteId" (click)="cancelDeleteAnnonce()">
+  <div class="modal-content" (click)="$event.stopPropagation()">
+    <h2>Supprimer l'annonce</h2>
+    <p>Cette action de modération est irréversible. L'annonce sera définitivement retirée de la plateforme.</p>
+
+    <div class="modal-actions mt-6">
+      <button class="btn-primary btn-primary--ghost" (click)="cancelDeleteAnnonce()">Annuler</button>
+      <button class="btn-primary" style="background: var(--accent); color: white;" (click)="confirmDeleteAnnonce()">Supprimer</button>
+    </div>
+  </div>
+</div>
