@@ -10,7 +10,7 @@
 
     <div class="auth-content">
 
-      @if (!isRegistered) {
+      @if (!isRegistered()) {
 
         <h1>Rejoignez le quartier.</h1>
         <p style="color: var(--ink-60); margin-bottom: var(--sp-10); font-size: var(--text-lg);">Créez votre compte pour échanger avec vos voisins.</p>
@@ -19,57 +19,62 @@
           <div class="form-row">
             <div class="form-group">
               <label>Prénom *</label>
-              <input type="text" [(ngModel)]="prenom" name="prenom" placeholder="Jean">
+              <input type="text" [ngModel]="prenom()" (ngModelChange)="prenom.set($event)" name="prenom" placeholder="Jean">
             </div>
             <div class="form-group">
               <label>Nom *</label>
-              <input type="text" [(ngModel)]="nom" name="nom" placeholder="Dupont">
+              <input type="text" [ngModel]="nom()" (ngModelChange)="nom.set($event)" name="nom" placeholder="Dupont">
             </div>
           </div>
 
           <div class="form-group">
             <label>Adresse e-mail *</label>
-            <input type="email" [(ngModel)]="email" name="email" placeholder="jean.dupont@exemple.com">
+            <input type="email" [ngModel]="email()" (ngModelChange)="email.set($event)" name="email" placeholder="jean.dupont@exemple.com">
           </div>
 
           <div class="form-row">
             <div class="form-group">
               <label>Mot de passe *</label>
-              <input type="password" [(ngModel)]="password" name="password" placeholder="••••••••">
+              <input type="password" [ngModel]="password()" (ngModelChange)="password.set($event)" name="password" placeholder="••••••••">
             </div>
             <div class="form-group">
               <label>Confirmer *</label>
-              <input type="password" [(ngModel)]="confirmPassword" name="confirmPassword" placeholder="••••••••">
+              <input type="password" [ngModel]="confirmPassword()" (ngModelChange)="confirmPassword.set($event)" name="confirmPassword" placeholder="••••••••">
             </div>
           </div>
 
           <div class="form-group">
             <label>Photo de profil *</label>
 
-            <button type="button" class="upload-empty-btn w-full" *ngIf="!avatarPreview" (click)="registerFileInput.click()">
-              <i class="ri-image-add-line"></i>
-              <span>Choisir une photo</span>
-            </button>
-
-            <div class="register-photo-wrapper" *ngIf="avatarPreview">
-              <img [src]="avatarPreview" alt="Aperçu avatar" class="avatar avatar--xl register-avatar">
-
-              <button type="button" class="edit-photo-btn" (click)="registerFileInput.click()" title="Changer de photo">
-                <i class="ri-edit-2-fill"></i>
+            @if (avatarPreview()) {
+              <div class="register-photo-wrapper">
+                <img [src]="avatarPreview()" alt="Aperçu avatar" class="avatar avatar--xl register-avatar">
+                <button type="button" class="edit-photo-btn" (click)="registerFileInput.click()" title="Changer de photo">
+                  <i class="ri-edit-2-fill"></i>
+                </button>
+              </div>
+            } @else {
+              <button type="button" class="upload-empty-btn w-full" (click)="registerFileInput.click()">
+                <i class="ri-image-add-line"></i>
+                <span>Choisir une photo</span>
               </button>
-            </div>
+            }
 
             <input type="file" #registerFileInput (change)="onFileSelected($event)" accept="image/*" style="display: none;">
           </div>
 
-          @if (errorMessage) {
+          @if (errorMessage()) {
             <div style="color: var(--accent); margin-bottom: 1rem; text-align: center; font-weight: 500;">
-              {{ errorMessage }}
+              {{ errorMessage() }}
             </div>
           }
 
-          <button type="submit" class="btn-primary btn-primary--accent w-full">
-            Créer mon compte <i class="ri-user-add-line"></i>
+          <button type="submit" class="btn-primary btn-primary--accent w-full" [disabled]="isSubmitting()">
+            @if (isSubmitting()) {
+              Inscription en cours...
+            } @else {
+              Créer mon compte <i class="ri-user-add-line"></i>
+            }
           </button>
         </form>
 

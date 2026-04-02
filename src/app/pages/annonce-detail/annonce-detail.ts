@@ -1,71 +1,100 @@
-import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  inject,
+  signal,
+} from '@angular/core';
 import { ActivatedRoute, RouterModule } from '@angular/router';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
+import { DatePipe } from '@angular/common';
+import { map } from 'rxjs';
 import { AuthService } from '../../core/services/auth.service';
+import { AnnonceService } from '../../core/services/annonce.service';
+import { AdminService } from '../../core/services/admin.service';
+import { Annonce, Commentaire } from '../../core/models';
 
 @Component({
   selector: 'app-annonce-detail',
   standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule],
+  imports: [RouterModule, FormsModule, DatePipe],
   templateUrl: './annonce-detail.html',
   styleUrls: ['./annonce-detail.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class AnnonceDetailComponent implements OnInit {
-  annonce: any;
-  commentaires: any[] = [];
-  newCommentText = '';
-  currentUser: any;
-  isHelper = false;
-  showWithdrawModal = false;
-  withdrawMotif = '';
-  isLoading = false;
-  origin = 'feed';
-  showAdminDeleteModal = false;
+export class AnnonceDetailComponent {
+  private route = inject(ActivatedRoute);
+  private authService = inject(AuthService);
+  private annonceService = inject(AnnonceService);
+  private adminService = inject(AdminService);
 
-  constructor(
-    private route: ActivatedRoute,
-    private authService: AuthService,
-    private cdr: ChangeDetectorRef,
-  ) {}
+  private annonceId = toSignal(this.route.paramMap.pipe(map((params) => params.get('id'))));
 
-  ngOnInit() {
-    this.origin = history.state.origin || 'feed';
-    this.authService.getCurrentUser().subscribe({
-      next: (user) => {
-        this.currentUser = user;
-        this.cdr.detectChanges();
-        this.loadAnnonce();
-      },
+  currentUser = toSignal(this.authService.getCurrentUser());
+
+  annonce = signal<Annonce | null>(null);
+  isLoading = signal(false);
+  showWithdrawModal = signal(false);
+  withdrawMotif = signal('');
+  newCommentText = signal('');
+  showAdminDeleteModal = signal(false);
+  origin = signal('feed');
+
+  commentaires = computed<Commentaire[]>(() => {
+    const a = this.annonce();
+    if (!a?.commentaires) return [];
+    return [...a.commentaires].sort(
+      (x, y) => new Date(y.createdAt!).getTime() - new Date(x.createdAt!).getTime(),
+    );
+  });
+
+  isAuthor = computed(() => this.annonce()?.createur?.id === this.currentUser()?.id);
+
+  isHelper = computed(() => {
+    const user = this.currentUser();
+    return this.annonce()?.helpers?.some((h) => h.id === user?.id) ?? false;
+  });
+
+  isAdmin = computed(() => this.currentUser()?.roles?.includes('ROLE_ADMIN') ?? false);
+
+  canViewComments = computed(() => this.isAuthor() || this.isHelper() || this.isAdmin());
+
+  isFull = computed(() => {
+    const a = this.annonce();
+    if (!a?.maxHelpers) return false;
+    return (a.helpers?.length ?? 0) >= a.maxHelpers;
+  });
+
+  constructor() {
+    this.origin.set(history.state?.origin ?? 'feed');
+
+    effect(() => {
+      const id = this.annonceId();
+      if (id) {
+        this.fetchAnnonce(id);
+      }
     });
   }
 
-  loadAnnonce() {
-    const id = this.route.snapshot.paramMap.get('id');
+  private fetchAnnonce(id: string): void {
+    this.annonceService.getAnnonceById(id).subscribe({
+      next: (data) => this.annonce.set(data),
+    });
+  }
+
+  private reloadAnnonce(): void {
+    const id = this.annonceId();
     if (id) {
-      this.authService.getAnnonceById(id).subscribe({
-        next: (data) => {
-          this.annonce = data;
-
-          this.commentaires = (data.commentaires || []).sort((a: any, b: any) => {
-            return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-          });
-
-          if (this.currentUser) {
-            this.isHelper = data.helpers?.some((h: any) => h.id === this.currentUser.id) || false;
-          }
-          this.cdr.detectChanges();
-        },
-        error: (err) => console.error(err),
-      });
+      this.fetchAnnonce(id);
     }
   }
 
-  formatRelativeDate(dateInput: any): string {
+  formatRelativeDate(dateInput: string | Date | undefined): string {
+    if (!dateInput) return '';
     const date = new Date(dateInput);
     const now = new Date();
-
-    // On compare les dates sans l'heure pour Aujourd'hui/Hier
     const diffTime = now.getTime() - date.getTime();
     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
 
@@ -79,103 +108,68 @@ export class AnnonceDetailComponent implements OnInit {
     return date.toLocaleDateString('fr-FR');
   }
 
-  get isAuthor(): boolean {
-    return this.annonce?.createur?.id === this.currentUser?.id;
+  proposerAide(): void {
+    const a = this.annonce();
+    if (!a) return;
+    this.annonceService.aiderAnnonce(a.id).subscribe({
+      next: () => this.reloadAnnonce(),
+    });
   }
 
-  get isAdmin(): boolean {
-    return this.currentUser?.roles?.includes('ROLE_ADMIN') || false;
+  openWithdrawModal(): void {
+    this.withdrawMotif.set('');
+    this.showWithdrawModal.set(true);
   }
 
-  openAdminDeleteModal() {
-    this.showAdminDeleteModal = true;
-    this.cdr.detectChanges();
+  closeWithdrawModal(): void {
+    this.showWithdrawModal.set(false);
   }
 
-  closeAdminDeleteModal() {
-    this.showAdminDeleteModal = false;
-    this.cdr.detectChanges();
+  confirmWithdrawal(): void {
+    const a = this.annonce();
+    if (!a) return;
+
+    this.isLoading.set(true);
+    const motif = this.withdrawMotif().trim() || 'Désistement sans motif précisé.';
+
+    this.annonceService.desisterAnnonce(a.id, motif).subscribe({
+      next: () => {
+        this.isLoading.set(false);
+        this.closeWithdrawModal();
+        this.reloadAnnonce();
+      },
+      error: () => this.isLoading.set(false),
+    });
   }
 
-  confirmAdminDelete() {
-    this.authService.adminDeleteAnnonce(this.annonce.id).subscribe({
+  addComment(): void {
+    const text = this.newCommentText().trim();
+    const a = this.annonce();
+    if (!text || !a) return;
+
+    this.annonceService.addComment(a.id, text).subscribe({
+      next: () => {
+        this.newCommentText.set('');
+        this.reloadAnnonce();
+      },
+    });
+  }
+
+  openAdminDeleteModal(): void {
+    this.showAdminDeleteModal.set(true);
+  }
+
+  closeAdminDeleteModal(): void {
+    this.showAdminDeleteModal.set(false);
+  }
+
+  confirmAdminDelete(): void {
+    const a = this.annonce();
+    if (!a) return;
+    this.adminService.deleteAnnonce(a.id).subscribe({
       next: () => {
         this.closeAdminDeleteModal();
-        // On retourne au Fil (ou au Kanban) de manière fluide
         history.back();
-      },
-      error: (err) => console.error('Erreur de suppression', err),
-    });
-  }
-
-  get canViewComments(): boolean {
-    return this.isAuthor || this.isHelper || this.isAdmin;
-  }
-
-  get isFull(): boolean {
-    if (!this.annonce || !this.annonce.maxHelpers) {
-      return false; // Pas de limite
-    }
-    return (this.annonce.helpers?.length || 0) >= this.annonce.maxHelpers;
-  }
-
-  proposerAide() {
-    this.authService.aiderAnnonce(this.annonce.id).subscribe({
-      next: () => {
-        this.isHelper = true;
-        // Recharger l'annonce pour voir le message système "XXX a rejoint l'équipe"
-        this.loadAnnonce();
-      },
-      error: (err) => {
-        console.error('Erreur API :', err);
-        alert(err.error?.erreur || 'Impossible de rejoindre cette annonce.');
-      },
-    });
-  }
-
-  openWithdrawModal() {
-    this.withdrawMotif = '';
-    this.showWithdrawModal = true;
-    this.cdr.detectChanges();
-  }
-
-  closeWithdrawModal() {
-    this.showWithdrawModal = false;
-    this.cdr.detectChanges();
-  }
-
-  confirmWithdrawal() {
-    if (!this.annonce?.id) return;
-
-    this.isLoading = true;
-    const motifFinal = this.withdrawMotif.trim() || 'Désistement sans motif précisé.';
-
-    this.authService.desisterAnnonce(this.annonce.id, motifFinal).subscribe({
-      next: () => {
-        this.isLoading = false;
-        this.isHelper = false;
-        this.closeWithdrawModal();
-        this.loadAnnonce();
-      },
-      error: (err) => {
-        this.isLoading = false;
-        console.error('Erreur API désistement :', err);
-        alert(err.error?.erreur || 'Impossible de se désister.');
-      },
-    });
-  }
-
-  addComment() {
-    if (!this.newCommentText.trim()) return;
-
-    this.authService.addComment(this.annonce.id, this.newCommentText).subscribe({
-      next: () => {
-        this.newCommentText = ''; // On vide le champ
-        this.loadAnnonce(); // On recharge pour afficher le nouveau commentaire
-      },
-      error: (err) => {
-        console.error("Erreur d'envoi du commentaire :", err);
-        alert("Impossible d'envoyer le commentaire.");
       },
     });
   }

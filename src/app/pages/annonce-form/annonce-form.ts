@@ -1,77 +1,80 @@
-import { Component, ChangeDetectorRef } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { RouterModule, Router, ActivatedRoute } from '@angular/router';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  inject,
+  signal,
+} from '@angular/core';
+import { Router, ActivatedRoute, RouterModule } from '@angular/router';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
-import { AuthService } from '../../core/services/auth.service';
+import { map } from 'rxjs';
+import { AnnonceService } from '../../core/services/annonce.service';
+import { Categorie } from '../../core/models';
 
 @Component({
   selector: 'app-annonce-form',
   standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule],
+  imports: [RouterModule, FormsModule],
   templateUrl: './annonce-form.html',
   styleUrls: ['./annonce-form.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AnnonceFormComponent {
-  isEditMode = false;
-  annonceId: string | null = null;
-  titre = '';
-  description = '';
-  categorieId = '';
-  estRemunere = false;
-  categories: any[] = [];
-  maxHelpers: number | null = null;
+  private router = inject(Router);
+  private route = inject(ActivatedRoute);
+  private annonceService = inject(AnnonceService);
 
-  constructor(
-    private router: Router,
-    private route: ActivatedRoute,
-    private authService: AuthService,
-    private cdr: ChangeDetectorRef,
-  ) {}
+  private annonceId = toSignal(
+    this.route.paramMap.pipe(map((params) => params.get('id'))),
+  );
 
-  ngOnInit() {
-    this.authService.getCategories().subscribe((c) => (this.categories = c));
+  isEditMode = computed(() => !!this.annonceId());
 
-    this.route.paramMap.subscribe((params) => {
-      this.annonceId = params.get('id');
-      if (this.annonceId) {
-        this.isEditMode = true;
-        this.authService.getAnnonceById(this.annonceId).subscribe((a: any) => {
-          this.titre = a.titre;
-          this.description = a.description;
-          this.categorieId = a.categorie?.id?.toString() || '';
-          this.estRemunere = a.estRemunere || false;
-          this.maxHelpers = a.maxHelpers;
-          this.cdr.detectChanges();
+  categories = signal<Categorie[]>([]);
+  titre = signal('');
+  description = signal('');
+  categorieId = signal('');
+  estRemunere = signal(false);
+  maxHelpers = signal<number | null>(null);
+  isSubmitting = signal(false);
+
+  constructor() {
+    this.annonceService.getCategories().subscribe((c) => this.categories.set(c));
+
+    effect(() => {
+      const id = this.annonceId();
+      if (id) {
+        this.annonceService.getAnnonceById(id).subscribe((a) => {
+          this.titre.set(a.titre);
+          this.description.set(a.description);
+          this.categorieId.set(a.categorie?.id?.toString() ?? '');
+          this.estRemunere.set(a.estRemunere ?? false);
+          this.maxHelpers.set(a.maxHelpers ?? null);
         });
       }
     });
   }
 
-  onSubmit() {
+  onSubmit(): void {
     const payload = {
-      titre: this.titre,
-      description: this.description,
-      categorie_id: parseInt(this.categorieId),
-      estRemunere: this.estRemunere,
-      maxHelpers: this.maxHelpers,
+      titre: this.titre(),
+      description: this.description(),
+      categorie_id: parseInt(this.categorieId()),
+      estRemunere: this.estRemunere(),
+      maxHelpers: this.maxHelpers(),
     };
 
-    if (this.isEditMode && this.annonceId) {
-      // Mode MODIFICATION
-      this.authService.updateAnnonce(this.annonceId, payload).subscribe({
-        next: () => {
-          this.router.navigate(['/app/dashboard']);
-        },
-        error: (err) => console.error(err),
-      });
-    } else {
-      // Mode CRÉATION
-      this.authService.createAnnonce(payload).subscribe({
-        next: () => {
-          this.router.navigate(['/app/dashboard']);
-        },
-        error: (err) => console.error(err),
-      });
-    }
+    this.isSubmitting.set(true);
+
+    const request$ = this.isEditMode()
+      ? this.annonceService.updateAnnonce(this.annonceId()!, payload)
+      : this.annonceService.createAnnonce(payload);
+
+    request$.subscribe({
+      next: () => this.router.navigate(['/app/dashboard']),
+      error: () => this.isSubmitting.set(false),
+    });
   }
 }

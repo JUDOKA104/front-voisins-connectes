@@ -1,151 +1,135 @@
-import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
+import { ChangeDetectionStrategy, Component, inject, OnInit, signal } from '@angular/core';
 import { RouterModule } from '@angular/router';
-import { AuthService } from '../../core/services/auth.service';
+import { FormsModule } from '@angular/forms';
+import { DatePipe } from '@angular/common';
+import { AdminService } from '../../core/services/admin.service';
+import { AdminStats, AdminUser, Annonce } from '../../core/models';
 
 @Component({
   selector: 'app-admin',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule],
+  imports: [RouterModule, FormsModule, DatePipe],
   templateUrl: './admin.html',
   styleUrls: ['./admin.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AdminComponent implements OnInit {
-  stats: any = null;
-  isLoadingStats = true;
+  private adminService = inject(AdminService);
 
-  // Recherche
-  searchQuery = '';
-  searchResults: any[] = [];
-  isSearching = false;
-  hasSearched = false;
+  stats = signal<AdminStats | null>(null);
+  isLoadingStats = signal(true);
 
-  // Vue utilisateur
-  selectedUserId: number | null = null;
-  selectedUserAnnonces: any[] = [];
-  isLoadingAnnonces = false;
+  searchQuery = signal('');
+  searchResults = signal<AdminUser[]>([]);
+  isSearching = signal(false);
+  hasSearched = signal(false);
 
-  userToToggleBan: any = null;
-  annonceToDeleteId: number | null = null;
+  selectedUserId = signal<number | null>(null);
+  selectedUserAnnonces = signal<Annonce[]>([]);
+  isLoadingAnnonces = signal(false);
 
-  banMotifText = '';
+  userToToggleBan = signal<AdminUser | null>(null);
+  annonceToDeleteId = signal<number | null>(null);
+  banMotifText = signal('');
 
-  constructor(
-    private authService: AuthService,
-    private cdr: ChangeDetectorRef,
-  ) {}
-
-  ngOnInit() {
+  ngOnInit(): void {
     this.loadStats();
   }
 
-  loadStats() {
-    this.authService.getAdminStats().subscribe({
+  loadStats(): void {
+    this.adminService.getStats().subscribe({
       next: (data) => {
-        this.stats = data;
-        this.isLoadingStats = false;
-        this.cdr.detectChanges();
+        this.stats.set(data);
+        this.isLoadingStats.set(false);
       },
-      error: (err) => console.error(err),
     });
   }
 
-  viewBannedUsers() {
-    this.isSearching = true;
-    this.hasSearched = true;
-    this.authService.adminGetBannedUsers().subscribe({
+  viewBannedUsers(): void {
+    this.isSearching.set(true);
+    this.hasSearched.set(true);
+    this.adminService.getBannedUsers().subscribe({
       next: (users) => {
-        this.searchResults = users;
-        this.isSearching = false;
-        this.cdr.detectChanges();
+        this.searchResults.set(users);
+        this.isSearching.set(false);
       },
-      error: () => (this.isSearching = false),
+      error: () => this.isSearching.set(false),
     });
   }
 
-  searchUsers() {
-    if (!this.searchQuery.trim()) return;
+  searchUsers(): void {
+    if (!this.searchQuery().trim()) return;
 
-    this.isSearching = true;
-    this.hasSearched = true;
-    this.authService.adminSearchUsers(this.searchQuery).subscribe({
+    this.isSearching.set(true);
+    this.hasSearched.set(true);
+    this.adminService.searchUsers(this.searchQuery()).subscribe({
       next: (users) => {
-        this.searchResults = users;
-        this.isSearching = false;
-        this.cdr.detectChanges();
+        this.searchResults.set(users);
+        this.isSearching.set(false);
       },
-      error: (err) => {
-        console.error(err);
-        this.isSearching = false;
+      error: () => this.isSearching.set(false),
+    });
+  }
+
+  initToggleBan(user: AdminUser): void {
+    this.userToToggleBan.set(user);
+  }
+
+  cancelToggleBan(): void {
+    this.userToToggleBan.set(null);
+  }
+
+  confirmToggleBan(): void {
+    const user = this.userToToggleBan();
+    if (!user) return;
+
+    this.adminService.banUser(user.id, this.banMotifText()).subscribe({
+      next: (res) => {
+        this.searchResults.update((users) =>
+          users.map((u) =>
+            u.id === user.id ? { ...u, isBanned: res.isBanned, banMotif: res.banMotif ?? undefined } : u,
+          ),
+        );
+        this.userToToggleBan.set(null);
+        this.banMotifText.set('');
       },
     });
   }
 
-  initToggleBan(user: any) {
-    this.userToToggleBan = user;
+  initDeleteAnnonce(id: number): void {
+    this.annonceToDeleteId.set(id);
   }
 
-  cancelToggleBan() {
-    this.userToToggleBan = null;
+  cancelDeleteAnnonce(): void {
+    this.annonceToDeleteId.set(null);
   }
 
-  confirmToggleBan() {
-    if (!this.userToToggleBan) return;
-    const user = this.userToToggleBan;
+  confirmDeleteAnnonce(): void {
+    const id = this.annonceToDeleteId();
+    if (!id) return;
 
-    this.authService.adminBanUser(user.id, this.banMotifText).subscribe({
-      next: (res: any) => {
-        user.isBanned = res.isBanned;
-        user.banMotif = res.banMotif; // Met à jour l'affichage
-        this.userToToggleBan = null;
-        this.banMotifText = ''; // On vide le champ
-        this.cdr.detectChanges();
-      },
-      error: (err) => console.error(err),
-    });
-  }
-
-  initDeleteAnnonce(id: number) {
-    this.annonceToDeleteId = id;
-  }
-
-  cancelDeleteAnnonce() {
-    this.annonceToDeleteId = null;
-  }
-
-  confirmDeleteAnnonce() {
-    if (!this.annonceToDeleteId) return;
-    const id = this.annonceToDeleteId;
-
-    this.authService.adminDeleteAnnonce(id).subscribe({
+    this.adminService.deleteAnnonce(id).subscribe({
       next: () => {
-        // Retire l'annonce de la liste locale
-        this.selectedUserAnnonces = this.selectedUserAnnonces.filter((a) => a.id !== id);
-        this.loadStats(); // MAJ des compteurs
-        this.annonceToDeleteId = null;
-        this.cdr.detectChanges();
+        this.selectedUserAnnonces.update((list) => list.filter((a) => a.id !== id));
+        this.loadStats();
+        this.annonceToDeleteId.set(null);
       },
-      error: (err) => console.error('Erreur de suppression', err),
     });
   }
 
-  viewAnnonces(userId: number) {
-    // Si on clique sur le même, on ferme l'accordéon
-    if (this.selectedUserId === userId) {
-      this.selectedUserId = null;
+  viewAnnonces(userId: number): void {
+    if (this.selectedUserId() === userId) {
+      this.selectedUserId.set(null);
       return;
     }
 
-    this.selectedUserId = userId;
-    this.isLoadingAnnonces = true;
-    this.authService.adminGetUserAnnonces(userId).subscribe({
+    this.selectedUserId.set(userId);
+    this.isLoadingAnnonces.set(true);
+    this.adminService.getUserAnnonces(userId).subscribe({
       next: (annonces) => {
-        this.selectedUserAnnonces = annonces;
-        this.isLoadingAnnonces = false;
-        this.cdr.detectChanges();
+        this.selectedUserAnnonces.set(annonces);
+        this.isLoadingAnnonces.set(false);
       },
-      error: (err) => console.error(err),
     });
   }
 }

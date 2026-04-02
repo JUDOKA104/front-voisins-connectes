@@ -1,4 +1,4 @@
-<nav class="nav" [class.scrolled]="isScrolled">
+<nav class="nav" [class.scrolled]="isScrolled()">
   <a routerLink="/" class="nav__logo">LienUrbain<span>.</span></a>
   <span class="nav__spacer"></span>
   <ul class="nav__links">
@@ -6,18 +6,20 @@
     <li>
       <button class="nav-user" [routerLink]="['/app/profile']">
         <img
-          [src]="currentUser?.photoProfil"
-          [alt]="currentUser?.prenom"
+          [src]="currentUser()?.photoProfil"
+          [alt]="currentUser()?.prenom"
           class="avatar avatar--sm"
         >
-        <span class="nav-user__name">{{ currentUser?.prenom }}</span>
+        <span class="nav-user__name">{{ currentUser()?.prenom }}</span>
       </button>
     </li>
-    <li *ngIf="isAdmin">
-      <a routerLink="/app/admin" style="color: var(--accent); font-weight: 600;">
-        <i class="ri-shield-user-fill"></i> Admin
-      </a>
-    </li>
+    @if (isAdmin()) {
+      <li>
+        <a routerLink="/app/admin" style="color: var(--accent); font-weight: 600;">
+          <i class="ri-shield-user-fill"></i> Admin
+        </a>
+      </li>
+    }
     <li>
       <button class="btn-primary btn-primary--ghost" (click)="logout()">
         Déconnexion
@@ -35,7 +37,7 @@
         <div class="dash-header__greeting">
           <p class="dash-header__eyebrow">Tableau de bord</p>
           <h1 class="dash-header__title">
-            Bonjour, <em>{{ currentUser?.prenom }}</em>.
+            Bonjour, <em>{{ currentUser()?.prenom }}</em>.
           </h1>
         </div>
 
@@ -55,22 +57,22 @@
       <!-- Summary chips -->
       <div class="dash-summary">
         <div class="dash-summary__item">
-          <span class="dash-summary__value">{{ allCards.length }}</span>
+          <span class="dash-summary__value">{{ allCards().length }}</span>
           <span class="dash-summary__label">Annonces au total</span>
         </div>
         <div class="dash-summary__sep"></div>
         <div class="dash-summary__item">
-          <span class="dash-summary__value">{{ getColumn('En attente').length }}</span>
+          <span class="dash-summary__value">{{ columnEnAttente().length }}</span>
           <span class="dash-summary__label">En attente</span>
         </div>
         <div class="dash-summary__sep"></div>
         <div class="dash-summary__item">
-          <span class="dash-summary__value">{{ getColumn('En cours').length }}</span>
+          <span class="dash-summary__value">{{ columnEnCours().length }}</span>
           <span class="dash-summary__label">En cours</span>
         </div>
         <div class="dash-summary__sep"></div>
         <div class="dash-summary__item">
-          <span class="dash-summary__value">{{ getColumn('Terminé').length }}</span>
+          <span class="dash-summary__value">{{ columnTermine().length }}</span>
           <span class="dash-summary__label">Terminées</span>
         </div>
       </div>
@@ -83,19 +85,19 @@
       <div class="dash-tabs__inner">
         <button
           class="dash-tab"
-          [class.active]="activeTab === 'mine'"
+          [class.active]="activeTab() === 'mine'"
           (click)="switchTab('mine')"
         >
           Mes annonces
-          <span class="dash-tab__count">{{ myAnnonces.length }}</span>
+          <span class="dash-tab__count">{{ myAnnonces().length }}</span>
         </button>
         <button
           class="dash-tab"
-          [class.active]="activeTab === 'helping'"
+          [class.active]="activeTab() === 'helping'"
           (click)="switchTab('helping')"
         >
           J'aide avec
-          <span class="dash-tab__count">{{ helpingAnnonces.length }}</span>
+          <span class="dash-tab__count">{{ helpingAnnonces().length }}</span>
         </button>
       </div>
     </div>
@@ -105,7 +107,7 @@
   <section class="kanban-section">
     <div class="kanban-outer">
       <div class="kanban-board"
-           [class.is-loading]="isLoading"
+           [class.is-loading]="isLoading()"
       >
 
         <!-- ── Column: En Attente ──────────── -->
@@ -114,81 +116,84 @@
           (dragover)="onDragOver($event)"
           (dragleave)="onDragLeave($event)"
           (drop)="onDrop($event, 'En attente')"
-          [class.drag-over]="dragOverColumn === 'En attente'"
+          [class.drag-over]="dragOverColumn() === 'En attente'"
           data-column="En attente"
         >
           <div class="kanban-col__head">
             <div class="kanban-col__status-dot kanban-col__status-dot--pending"></div>
             <h2 class="kanban-col__title">En attente</h2>
-            <span class="kanban-col__count">{{ getColumn('En attente').length }}</span>
+            <span class="kanban-col__count">{{ columnEnAttente().length }}</span>
           </div>
 
           <div class="kanban-col__cards">
-            <div
-              class="kanban-card"
-              *ngFor="let card of getColumn('En attente'); trackBy: trackById"
-              [draggable]="card._isMine"
-              (dragstart)="onDragStart($event, card)"
-              (dragend)="onDragEnd()"
-              [class.is-dragging]="draggingCard?.id === card.id"
-              [class.is-mine]="card._isMine"
-            >
-              <div class="kanban-card__top">
-                <span class="tag">{{ card.categorie?.nom }}</span>
-                <span class="kanban-card__role" *ngIf="!card._isMine">
-                  J'aide
-                </span>
-              </div>
-
-              <h3 class="kanban-card__title">{{ card.titre }}</h3>
-
-              <p class="kanban-card__excerpt">
-                {{ card.description | slice:0:80 }}{{ card.description.length > 80 ? '…' : '' }}
-              </p>
-
-              <div class="kanban-card__footer">
-                <span class="kanban-card__date">{{ card.createdAt | date:'d MMM' : '' : 'fr' }}</span>
-                <div class="kanban-card__comments" *ngIf="(card.commentairesCount ?? 0) > 0">
-                  <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
-                    <path d="M12 1H2a1 1 0 00-1 1v7a1 1 0 001 1h2l3 3 3-3h2a1 1 0 001-1V2a1 1 0 00-1-1z" stroke="currentColor" stroke-width="1" stroke-linejoin="round"/>
-                  </svg>
-                  {{ card.commentairesCount }}
+            @for (card of columnEnAttente(); track card.id) {
+              <div
+                class="kanban-card"
+                [draggable]="card._isMine"
+                (dragstart)="onDragStart($event, card)"
+                (dragend)="onDragEnd()"
+                [class.is-dragging]="draggingCard()?.id === card.id"
+                [class.is-mine]="card._isMine"
+              >
+                <div class="kanban-card__top">
+                  <span class="tag">{{ card.categorie?.nom }}</span>
+                  @if (!card._isMine) {
+                    <span class="kanban-card__role">J'aide</span>
+                  }
                 </div>
-              </div>
 
-              <div class="kanban-card__drag-handle" *ngIf="card._isMine" aria-hidden="true">
-                <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                  <circle cx="4" cy="3" r="1" fill="currentColor"/>
-                  <circle cx="4" cy="6" r="1" fill="currentColor"/>
-                  <circle cx="4" cy="9" r="1" fill="currentColor"/>
-                  <circle cx="8" cy="3" r="1" fill="currentColor"/>
-                  <circle cx="8" cy="6" r="1" fill="currentColor"/>
-                  <circle cx="8" cy="9" r="1" fill="currentColor"/>
-                </svg>
-              </div>
+                <h3 class="kanban-card__title">{{ card.titre }}</h3>
 
-              <!-- Quick actions -->
-              <div class="card-actions">
-                <a [routerLink]="['/app/annonces', card.id]" [state]="{ origin: 'dashboard' }" class="btn-icon" title="Voir">
-                  <i class="ri-eye-line"></i>
-                </a>
+                <p class="kanban-card__excerpt">
+                  {{ card.description | slice:0:80 }}{{ card.description.length > 80 ? '…' : '' }}
+                </p>
 
-                <ng-container *ngIf="card._isMine">
-                  <a [routerLink]="['/app/annonces', card.id, 'edit']" class="btn-icon" title="Modifier" (click)="$event.stopPropagation()">
-                    <i class="ri-edit-line"></i>
+                <div class="kanban-card__footer">
+                  <span class="kanban-card__date">{{ card.createdAt | date:'d MMM' : '' : 'fr' }}</span>
+                  @if ((card.commentairesCount ?? 0) > 0) {
+                    <div class="kanban-card__comments">
+                      <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
+                        <path d="M12 1H2a1 1 0 00-1 1v7a1 1 0 001 1h2l3 3 3-3h2a1 1 0 001-1V2a1 1 0 00-1-1z" stroke="currentColor" stroke-width="1" stroke-linejoin="round"/>
+                      </svg>
+                      {{ card.commentairesCount }}
+                    </div>
+                  }
+                </div>
+
+                @if (card._isMine) {
+                  <div class="kanban-card__drag-handle" aria-hidden="true">
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                      <circle cx="4" cy="3" r="1" fill="currentColor"/>
+                      <circle cx="4" cy="6" r="1" fill="currentColor"/>
+                      <circle cx="4" cy="9" r="1" fill="currentColor"/>
+                      <circle cx="8" cy="3" r="1" fill="currentColor"/>
+                      <circle cx="8" cy="6" r="1" fill="currentColor"/>
+                      <circle cx="8" cy="9" r="1" fill="currentColor"/>
+                    </svg>
+                  </div>
+                }
+
+                <!-- Quick actions -->
+                <div class="card-actions">
+                  <a [routerLink]="['/app/annonces', card.id]" [state]="{ origin: 'dashboard' }" class="btn-icon" title="Voir">
+                    <i class="ri-eye-line"></i>
                   </a>
-                  <button (click)="initDelete(card.id); $event.stopPropagation()" class="btn-icon delete" title="Supprimer">
-                    <i class="ri-delete-bin-line"></i>
-                  </button>
-                </ng-container>
+                  @if (card._isMine) {
+                    <a [routerLink]="['/app/annonces', card.id, 'edit']" class="btn-icon" title="Modifier" (click)="$event.stopPropagation()">
+                      <i class="ri-edit-line"></i>
+                    </a>
+                    <button (click)="initDelete(card.id); $event.stopPropagation()" class="btn-icon delete" title="Supprimer">
+                      <i class="ri-delete-bin-line"></i>
+                    </button>
+                  }
+                </div>
+
               </div>
-
-            </div>
-
-            <!-- Empty state -->
-            <div class="kanban-col__empty" *ngIf="getColumn('En attente').length === 0">
-              <p>Aucune annonce en attente</p>
-            </div>
+            } @empty {
+              <div class="kanban-col__empty">
+                <p>Aucune annonce en attente</p>
+              </div>
+            }
           </div>
         </div>
 
@@ -201,69 +206,73 @@
           (dragover)="onDragOver($event)"
           (dragleave)="onDragLeave($event)"
           (drop)="onDrop($event, 'En cours')"
-          [class.drag-over]="dragOverColumn === 'En cours'"
+          [class.drag-over]="dragOverColumn() === 'En cours'"
           data-column="En cours"
         >
           <div class="kanban-col__head">
             <div class="kanban-col__status-dot kanban-col__status-dot--active"></div>
             <h2 class="kanban-col__title">En cours</h2>
-            <span class="kanban-col__count">{{ getColumn('En cours').length }}</span>
+            <span class="kanban-col__count">{{ columnEnCours().length }}</span>
           </div>
 
           <div class="kanban-col__cards">
-            <div
-              class="kanban-card kanban-card--active"
-              *ngFor="let card of getColumn('En cours'); trackBy: trackById"
-              [draggable]="card._isMine"
-              (dragstart)="onDragStart($event, card)"
-              (dragend)="onDragEnd()"
-              [class.is-dragging]="draggingCard?.id === card.id"
-              [class.is-mine]="card._isMine"
-            >
-              <div class="kanban-card__top">
-                <span class="tag">{{ card.categorie?.nom }}</span>
-                <span class="kanban-card__role" *ngIf="!card._isMine">J'aide</span>
-              </div>
+            @for (card of columnEnCours(); track card.id) {
+              <div
+                class="kanban-card kanban-card--active"
+                [draggable]="card._isMine"
+                (dragstart)="onDragStart($event, card)"
+                (dragend)="onDragEnd()"
+                [class.is-dragging]="draggingCard()?.id === card.id"
+                [class.is-mine]="card._isMine"
+              >
+                <div class="kanban-card__top">
+                  <span class="tag">{{ card.categorie?.nom }}</span>
+                  @if (!card._isMine) {
+                    <span class="kanban-card__role">J'aide</span>
+                  }
+                </div>
 
-              <h3 class="kanban-card__title">{{ card.titre }}</h3>
-              <p class="kanban-card__excerpt">
-                {{ card.description | slice:0:80 }}{{ card.description.length > 80 ? '…' : '' }}
-              </p>
+                <h3 class="kanban-card__title">{{ card.titre }}</h3>
+                <p class="kanban-card__excerpt">
+                  {{ card.description | slice:0:80 }}{{ card.description.length > 80 ? '…' : '' }}
+                </p>
 
-              <div class="kanban-card__footer">
-                <span class="kanban-card__date">{{ card.createdAt | date:'d MMM' : '' : 'fr' }}</span>
-              </div>
+                <div class="kanban-card__footer">
+                  <span class="kanban-card__date">{{ card.createdAt | date:'d MMM' : '' : 'fr' }}</span>
+                </div>
 
-              <div class="card-actions">
-                <a [routerLink]="['/app/annonces', card.id]" [state]="{ origin: 'dashboard' }" class="btn-icon" title="Voir">
-                  <i class="ri-eye-line"></i>
-                </a>
-
-                <ng-container *ngIf="card._isMine">
-                  <a [routerLink]="['/app/annonces', card.id, 'edit']" class="btn-icon" title="Modifier" (click)="$event.stopPropagation()">
-                    <i class="ri-edit-line"></i>
+                <div class="card-actions">
+                  <a [routerLink]="['/app/annonces', card.id]" [state]="{ origin: 'dashboard' }" class="btn-icon" title="Voir">
+                    <i class="ri-eye-line"></i>
                   </a>
-                  <button (click)="initDelete(card.id); $event.stopPropagation()" class="btn-icon delete" title="Supprimer">
-                    <i class="ri-delete-bin-line"></i>
-                  </button>
-                </ng-container>
-              </div>
+                  @if (card._isMine) {
+                    <a [routerLink]="['/app/annonces', card.id, 'edit']" class="btn-icon" title="Modifier" (click)="$event.stopPropagation()">
+                      <i class="ri-edit-line"></i>
+                    </a>
+                    <button (click)="initDelete(card.id); $event.stopPropagation()" class="btn-icon delete" title="Supprimer">
+                      <i class="ri-delete-bin-line"></i>
+                    </button>
+                  }
+                </div>
 
-              <div class="kanban-card__drag-handle" *ngIf="card._isMine" aria-hidden="true">
-                <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                  <circle cx="4" cy="3" r="1" fill="currentColor"/>
-                  <circle cx="4" cy="6" r="1" fill="currentColor"/>
-                  <circle cx="4" cy="9" r="1" fill="currentColor"/>
-                  <circle cx="8" cy="3" r="1" fill="currentColor"/>
-                  <circle cx="8" cy="6" r="1" fill="currentColor"/>
-                  <circle cx="8" cy="9" r="1" fill="currentColor"/>
-                </svg>
+                @if (card._isMine) {
+                  <div class="kanban-card__drag-handle" aria-hidden="true">
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                      <circle cx="4" cy="3" r="1" fill="currentColor"/>
+                      <circle cx="4" cy="6" r="1" fill="currentColor"/>
+                      <circle cx="4" cy="9" r="1" fill="currentColor"/>
+                      <circle cx="8" cy="3" r="1" fill="currentColor"/>
+                      <circle cx="8" cy="6" r="1" fill="currentColor"/>
+                      <circle cx="8" cy="9" r="1" fill="currentColor"/>
+                    </svg>
+                  </div>
+                }
               </div>
-            </div>
-
-            <div class="kanban-col__empty" *ngIf="getColumn('En cours').length === 0">
-              <p>Déposez une carte ici pour démarrer</p>
-            </div>
+            } @empty {
+              <div class="kanban-col__empty">
+                <p>Déposez une carte ici pour démarrer</p>
+              </div>
+            }
           </div>
         </div>
 
@@ -276,46 +285,49 @@
           (dragover)="onDragOver($event)"
           (dragleave)="onDragLeave($event)"
           (drop)="onDrop($event, 'Terminé')"
-          [class.drag-over]="dragOverColumn === 'Terminé'"
+          [class.drag-over]="dragOverColumn() === 'Terminé'"
           data-column="Terminé"
         >
           <div class="kanban-col__head">
             <div class="kanban-col__status-dot kanban-col__status-dot--done"></div>
             <h2 class="kanban-col__title">Terminé</h2>
-            <span class="kanban-col__count">{{ getColumn('Terminé').length }}</span>
+            <span class="kanban-col__count">{{ columnTermine().length }}</span>
           </div>
 
           <div class="kanban-col__cards">
-            <div
-              class="kanban-card kanban-card--done"
-              *ngFor="let card of getColumn('Terminé'); trackBy: trackById"
-              [draggable]="card._isMine"
-              (dragstart)="onDragStart($event, card)"
-              (dragend)="onDragEnd()"
-              [class.is-dragging]="draggingCard?.id === card.id"
-            >
-              <div class="kanban-card__top">
-                <span class="tag">{{ card.categorie?.nom }}</span>
+            @for (card of columnTermine(); track card.id) {
+              <div
+                class="kanban-card kanban-card--done"
+                [draggable]="card._isMine"
+                (dragstart)="onDragStart($event, card)"
+                (dragend)="onDragEnd()"
+                [class.is-dragging]="draggingCard()?.id === card.id"
+              >
+                <div class="kanban-card__top">
+                  <span class="tag">{{ card.categorie?.nom }}</span>
+                </div>
+                <h3 class="kanban-card__title">{{ card.titre }}</h3>
+                <div class="kanban-card__footer">
+                  <span class="kanban-card__date">{{ card.createdAt | date:'d MMM' : '' : 'fr' }}</span>
+                </div>
+                @if (card._isMine) {
+                  <div class="kanban-card__drag-handle" aria-hidden="true">
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                      <circle cx="4" cy="3" r="1" fill="currentColor"/>
+                      <circle cx="4" cy="6" r="1" fill="currentColor"/>
+                      <circle cx="4" cy="9" r="1" fill="currentColor"/>
+                      <circle cx="8" cy="3" r="1" fill="currentColor"/>
+                      <circle cx="8" cy="6" r="1" fill="currentColor"/>
+                      <circle cx="8" cy="9" r="1" fill="currentColor"/>
+                    </svg>
+                  </div>
+                }
               </div>
-              <h3 class="kanban-card__title">{{ card.titre }}</h3>
-              <div class="kanban-card__footer">
-                <span class="kanban-card__date">{{ card.createdAt | date:'d MMM' : '' : 'fr' }}</span>
+            } @empty {
+              <div class="kanban-col__empty">
+                <p>Vos services accomplis apparaîtront ici</p>
               </div>
-              <div class="kanban-card__drag-handle" *ngIf="card._isMine" aria-hidden="true">
-                <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                  <circle cx="4" cy="3" r="1" fill="currentColor"/>
-                  <circle cx="4" cy="6" r="1" fill="currentColor"/>
-                  <circle cx="4" cy="9" r="1" fill="currentColor"/>
-                  <circle cx="8" cy="3" r="1" fill="currentColor"/>
-                  <circle cx="8" cy="6" r="1" fill="currentColor"/>
-                  <circle cx="8" cy="9" r="1" fill="currentColor"/>
-                </svg>
-              </div>
-            </div>
-
-            <div class="kanban-col__empty" *ngIf="getColumn('Terminé').length === 0">
-              <p>Vos services accomplis apparaîtront ici</p>
-            </div>
+            }
           </div>
         </div>
 
@@ -324,23 +336,25 @@
   </section>
 
   <!-- ── Updating toast ─────────────────── -->
-  <div class="update-toast" [class.visible]="isUpdating">
+  <div class="update-toast" [class.visible]="isUpdating()">
     <svg width="14" height="14" viewBox="0 0 14 14" fill="none" class="update-toast__spinner">
       <circle cx="7" cy="7" r="6" stroke="currentColor" stroke-width="1.5" stroke-dasharray="20 18"/>
     </svg>
     Mise à jour…
   </div>
 
-  <div class="modal-overlay" *ngIf="annonceToDelete !== null">
-    <div class="modal-content">
-      <h2>Supprimer l'annonce ?</h2>
-      <p>Cette action est irréversible. L'annonce disparaîtra définitivement de votre Kanban et du Fil d'actualité. Êtes-vous sûr de vouloir continuer ?</p>
+  @if (annonceToDelete() !== null) {
+    <div class="modal-overlay">
+      <div class="modal-content">
+        <h2>Supprimer l'annonce ?</h2>
+        <p>Cette action est irréversible. L'annonce disparaîtra définitivement de votre Kanban et du Fil d'actualité. Êtes-vous sûr de vouloir continuer ?</p>
 
-      <div class="modal-actions">
-        <button class="btn-primary btn-primary--ghost" (click)="cancelDelete()">Annuler</button>
-        <button class="btn-primary" style="background: var(--accent); color: white;" (click)="confirmDelete()">Supprimer</button>
+        <div class="modal-actions">
+          <button class="btn-primary btn-primary--ghost" (click)="cancelDelete()">Annuler</button>
+          <button class="btn-primary" style="background: var(--accent); color: white;" (click)="confirmDelete()">Supprimer</button>
+        </div>
       </div>
     </div>
-  </div>
+  }
 
 </main>

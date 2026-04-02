@@ -1,30 +1,28 @@
-import {
-  Component,
-  OnInit,
-  OnDestroy,
-  HostListener,
-  ChangeDetectionStrategy,
-  ChangeDetectorRef,
-} from '@angular/core';
-import { Subject } from 'rxjs';
-import { Annonce } from '../../core/models';
-import { CommonModule } from '@angular/common';
+import { ChangeDetectionStrategy, Component, HostListener, signal } from '@angular/core';
 import { RouterModule } from '@angular/router';
+
+interface Stat {
+  value: string;
+  label: string;
+}
+
+interface ValueItem {
+  number: string;
+  title: string;
+  desc: string;
+}
 
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [CommonModule, RouterModule],
+  imports: [RouterModule],
   templateUrl: './home.html',
   styleUrls: ['./home.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class HomeComponent implements OnInit, OnDestroy {
-  // ── State ──────────────────────────────────
-  annonces: Annonce[] = [];
-  isScrolled = false;
+export class HomeComponent {
+  isScrolled = signal(false);
 
-  // ── Static content ─────────────────────────
   marqueeWords = [
     'Bricolage',
     'Jardinage',
@@ -40,13 +38,13 @@ export class HomeComponent implements OnInit, OnDestroy {
     'Photographie',
   ];
 
-  stats = [
+  stats: Stat[] = [
     { value: '1 200+', label: 'Membres actifs' },
     { value: '340', label: 'Annonces ce mois' },
     { value: '18', label: 'Quartiers couverts' },
   ];
 
-  values = [
+  values: ValueItem[] = [
     {
       number: '01',
       title: 'Proximité réelle',
@@ -64,27 +62,8 @@ export class HomeComponent implements OnInit, OnDestroy {
     },
   ];
 
-  private destroy$ = new Subject<void>();
-
-  constructor(
-    private cdr: ChangeDetectorRef,
-  ) {}
-
-  ngOnInit(): void {
-  }
-
-  ngOnDestroy(): void {
-    this.destroy$.next();
-    this.destroy$.complete();
-  }
-
-  // ── Scroll Detection ───────────────────────
   @HostListener('window:scroll')
   onScroll(): void {
-    const scrolled = window.scrollY > 20;
-    if (scrolled !== this.isScrolled) {
-      this.isScrolled = scrolled;
-      this.cdr.markForCheck();
-    }
+    this.isScrolled.set(window.scrollY > 20);
   }
 }

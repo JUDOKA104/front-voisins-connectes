@@ -1,98 +1,83 @@
-import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { RouterModule, Router } from '@angular/router';
+import { ChangeDetectionStrategy, Component, computed, inject, OnInit, signal } from '@angular/core';
+import { Router, RouterModule } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
+import { AnnonceService } from '../../core/services/annonce.service';
+import { Annonce, Categorie, User } from '../../core/models';
 
 @Component({
   selector: 'app-feed',
   standalone: true,
-  imports: [CommonModule, RouterModule],
+  imports: [RouterModule],
   templateUrl: './feed.html',
   styleUrls: ['./feed.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class FeedComponent implements OnInit {
-  categories: any[] = [];
-  selectedCat: number | null = null;
+  private authService = inject(AuthService);
+  private annonceService = inject(AnnonceService);
+  private router = inject(Router);
 
-  allAnnonces: any[] = [];
-  displayedAnnonces: any[] = [];
-  showAccessibleOnly = false;
-  showCertifiedOnly = false;
+  categories = signal<Categorie[]>([]);
+  selectedCat = signal<number | null>(null);
+  allAnnonces = signal<Annonce[]>([]);
+  currentUser = signal<User | null>(null);
+  showAccessibleOnly = signal(false);
+  showCertifiedOnly = signal(false);
 
-  currentUser: any = null;
+  displayedAnnonces = computed(() => {
+    let filtered = this.allAnnonces();
+    const user = this.currentUser();
 
-  constructor(
-    private authService: AuthService,
-    private cdr: ChangeDetectorRef,
-    private router: Router,
-  ) {}
-
-  ngOnInit() {
-    this.authService.getCurrentUser().subscribe({
-      next: (user) => {
-        this.currentUser = user;
-
-        this.authService.getCategories().subscribe((c) => {
-          this.categories = c;
-          this.cdr.detectChanges();
-        });
-
-        this.loadAnnonces();
-      },
-      error: (err) => {
-        console.error('Erreur récupération utilisateur', err);
-        this.authService.logout();
-        this.router.navigate(['/']);
-      },
-    });
-  }
-
-  loadAnnonces(catId: number | null = null) {
-    this.selectedCat = catId;
-    this.authService.getAnnonces(catId || undefined).subscribe({
-      next: (data) => {
-        this.allAnnonces = data;
-        this.applyFilters();
-      },
-      error: (err) => console.error(err),
-    });
-  }
-
-  toggleCertifiedFilter() {
-    this.showCertifiedOnly = !this.showCertifiedOnly;
-    this.applyFilters();
-  }
-
-  setAccessibleFilter(accessibleOnly: boolean) {
-    this.showAccessibleOnly = accessibleOnly;
-    this.applyFilters();
-  }
-
-  applyFilters() {
-    let filtered = this.allAnnonces;
-
-    if (this.currentUser) {
+    if (user) {
       filtered = filtered.filter((a) => {
-        const isMine = a.createur?.id === this.currentUser.id;
-        const amIHelping = a.helpers?.some((h: any) => h.id === this.currentUser.id);
+        const isMine = a.createur?.id === user.id;
+        const amIHelping = a.helpers?.some((h) => h.id === user.id);
         return !isMine && !amIHelping;
       });
     }
 
-    if (this.showAccessibleOnly) {
+    if (this.showAccessibleOnly()) {
       filtered = filtered.filter((a) => {
         if (!a.maxHelpers) return true;
         return (a.helpers?.length || 0) < a.maxHelpers;
       });
     }
 
-    if (this.showCertifiedOnly) {
+    if (this.showCertifiedOnly()) {
       filtered = filtered.filter((a) => {
         return a.createur?.badges && a.createur.badges.length > 0;
       });
     }
 
-    this.displayedAnnonces = filtered;
-    this.cdr.detectChanges();
+    return filtered;
+  });
+
+  ngOnInit(): void {
+    this.authService.getCurrentUser().subscribe({
+      next: (user) => {
+        this.currentUser.set(user);
+        this.annonceService.getCategories().subscribe((c) => this.categories.set(c));
+        this.loadAnnonces(null);
+      },
+      error: () => {
+        this.authService.logout();
+        this.router.navigate(['/']);
+      },
+    });
+  }
+
+  loadAnnonces(catId: number | null): void {
+    this.selectedCat.set(catId);
+    this.annonceService.getAnnonces(catId ?? undefined).subscribe({
+      next: (data) => this.allAnnonces.set(data),
+    });
+  }
+
+  toggleCertifiedFilter(): void {
+    this.showCertifiedOnly.update((v) => !v);
+  }
+
+  setAccessibleFilter(accessibleOnly: boolean): void {
+    this.showAccessibleOnly.set(accessibleOnly);
   }
 }

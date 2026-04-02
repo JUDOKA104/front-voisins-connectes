@@ -1,56 +1,58 @@
-import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
-import { RouterLink, RouterOutlet, Router, NavigationEnd } from '@angular/router';
-import { CommonModule } from '@angular/common';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { filter, map } from 'rxjs';
 import { AuthService } from './core/services/auth.service';
-import { filter } from 'rxjs/operators';
+import { User } from './core/models';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, CommonModule],
+  imports: [RouterOutlet, RouterLink],
   templateUrl: './app.html',
   styleUrl: './app.css',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class App implements OnInit {
-  currentUser: any = null;
-  currentUrl: string = '';
+export class App {
+  private authService = inject(AuthService);
+  private router = inject(Router);
 
-  constructor(
-    private authService: AuthService,
-    private router: Router,
-    private cdr: ChangeDetectorRef,
-  ) {
+  currentUser = signal<User | null>(null);
+
+  private currentUrl = toSignal(
+    this.router.events.pipe(
+      filter((event): event is NavigationEnd => event instanceof NavigationEnd),
+      map((event) => event.urlAfterRedirects),
+    ),
+    { initialValue: '' },
+  );
+
+  showGlobalNav = computed(() => {
+    const url = this.currentUrl();
+    return url.includes('/app/') && !url.includes('/app/dashboard');
+  });
+
+  showFeedLink = computed(() => !this.currentUrl().includes('/app/feed'));
+
+  isAdmin = computed(() => this.authService.currentUser?.roles?.includes('ROLE_ADMIN') ?? false);
+
+  constructor() {
     this.router.events
-      .pipe(filter((event) => event instanceof NavigationEnd))
-      .subscribe((event: any) => {
-        this.currentUrl = event.urlAfterRedirects;
-
-        if (this.authService.currentUser && !this.currentUser) {
+      .pipe(filter((event): event is NavigationEnd => event instanceof NavigationEnd))
+      .subscribe(() => {
+        if (this.authService.currentUser && !this.currentUser()) {
           this.authService.getCurrentUser().subscribe({
-            next: (user) => {
-              this.currentUser = user;
-              this.cdr.detectChanges();
-            },
+            next: (user) => this.currentUser.set(user),
           });
         } else if (!this.authService.currentUser) {
-          this.currentUser = null;
+          this.currentUser.set(null);
         }
       });
   }
 
-  ngOnInit() {}
-
-  get isAdmin(): boolean {
-    return this.authService.currentUser?.roles?.includes('ROLE_ADMIN') || false;
-  }
-
-  logout() {
+  logout(): void {
     this.authService.logout();
-    this.currentUser = null;
+    this.currentUser.set(null);
     this.router.navigate(['/']);
-  }
-
-  get showGlobalNav(): boolean {
-    return this.currentUrl.includes('/app/') && !this.currentUrl.includes('/app/dashboard');
   }
 }

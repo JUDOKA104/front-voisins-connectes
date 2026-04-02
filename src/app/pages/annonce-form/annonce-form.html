@@ -1,8 +1,10 @@
 <div class="container form-container">
 
   <div class="form-header">
-    <a routerLink="{{ isEditMode ? '/app/dashboard' : '/app/feed' }}" class="back-link"><i class="ri-arrow-left-line"></i> {{ isEditMode ? 'Retour au Tableau de Bord' : 'Retour au Fil' }}</a>
-    <h1>{{ isEditMode ? 'Modifier l\'annonce' : 'Publier une demande' }}</h1>
+    <a [routerLink]="isEditMode() ? '/app/dashboard' : '/app/feed'" class="back-link">
+      <i class="ri-arrow-left-line"></i> {{ isEditMode() ? 'Retour au Tableau de Bord' : 'Retour au Fil' }}
+    </a>
+    <h1>{{ isEditMode() ? 'Modifier l\'annonce' : 'Publier une demande' }}</h1>
     <p class="subtitle">Expliquez votre besoin à vos voisins. Soyez clair et précis pour obtenir les meilleures réponses.</p>
   </div>
 
@@ -10,21 +12,23 @@
 
     <div class="form-group">
       <label>Titre de l'annonce</label>
-      <input type="text" [(ngModel)]="titre" name="titre" placeholder="Ex: Monter une armoire PAX" required>
+      <input type="text" [ngModel]="titre()" (ngModelChange)="titre.set($event)" name="titre" placeholder="Ex: Monter une armoire PAX" required>
     </div>
 
     <div class="form-row">
       <div class="form-group">
         <label>Catégorie</label>
         <div class="select-wrapper">
-          <select [(ngModel)]="categorieId" name="categorieId" required>
-            <option *ngFor="let cat of categories" [value]="cat.id">{{ cat.nom }}</option>
+          <select [ngModel]="categorieId()" (ngModelChange)="categorieId.set($event)" name="categorieId" required>
+            @for (cat of categories(); track cat.id) {
+              <option [value]="cat.id">{{ cat.nom }}</option>
+            }
           </select>
           <i class="ri-arrow-down-s-line"></i>
         </div>
         <label>Limite d'aidants</label>
         <div class="select-wrapper">
-          <select [(ngModel)]="maxHelpers" name="maxHelpers">
+          <select [ngModel]="maxHelpers()" (ngModelChange)="maxHelpers.set($event)" name="maxHelpers">
             <option [ngValue]="null">Pas de limite</option>
             <option [ngValue]="1">1 personne</option>
             <option [ngValue]="2">2 personnes</option>
@@ -38,7 +42,7 @@
       <div class="form-group toggle-group">
         <label>Type de service</label>
         <label class="checkbox-container">
-          <input type="checkbox" [(ngModel)]="estRemunere" name="estRemunere">
+          <input type="checkbox" [ngModel]="estRemunere()" (ngModelChange)="estRemunere.set($event)" name="estRemunere">
           <span class="checkmark"></span>
           Service rémunéré
         </label>
@@ -47,11 +51,17 @@
 
     <div class="form-group">
       <label>Description détaillée</label>
-      <textarea [(ngModel)]="description" name="description" placeholder="Décrivez le matériel nécessaire, le temps estimé, etc." required></textarea>
+      <textarea [ngModel]="description()" (ngModelChange)="description.set($event)" name="description" placeholder="Décrivez le matériel nécessaire, le temps estimé, etc." required></textarea>
     </div>
 
     <div class="form-actions">
-      <button type="submit" class="btn-primary btn-primary--accent">{{ isEditMode ? 'Modifier l\'annonce' : 'Publier une demande' }} <i class="ri-send-plane-line"></i></button>
+      <button type="submit" class="btn-primary btn-primary--accent" [disabled]="isSubmitting()">
+        @if (isSubmitting()) {
+          Envoi en cours...
+        } @else {
+          {{ isEditMode() ? 'Modifier l\'annonce' : 'Publier une demande' }} <i class="ri-send-plane-line"></i>
+        }
+      </button>
     </div>
   </form>
 

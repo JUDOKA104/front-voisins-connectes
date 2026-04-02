@@ -1,30 +1,25 @@
 import {
-  Component,
-  OnInit,
-  OnDestroy,
-  HostListener,
   ChangeDetectionStrategy,
-  ChangeDetectorRef,
+  Component,
+  computed,
+  HostListener,
+  inject,
+  OnDestroy,
+  OnInit,
+  signal,
 } from '@angular/core';
 import { Router, RouterModule } from '@angular/router';
-import { Subject } from 'rxjs';
-
-import { Annonce } from '../../core/models';
+import { SlicePipe, DatePipe } from '@angular/common';
+import { Annonce, User } from '../../core/models';
 import { AuthService } from '../../core/services/auth.service';
-import { CommonModule } from '@angular/common';
-import { DragDropModule } from '@angular/cdk/drag-drop';
+import { AnnonceService } from '../../core/services/annonce.service';
 
-// Extended for Kanban metadata
 interface KanbanCard extends Annonce {
-  id: number;
-  titre: string;
-  description: string;
-  statut: string;
   category: string;
   userName: string;
-  userAvatar: string;
+  userAvatar: string | undefined;
   commentsCount: number;
-  _isMine?: boolean;
+  _isMine: boolean;
 }
 
 type KanbanColumn = 'En attente' | 'En cours' | 'Terminé';
@@ -32,238 +27,182 @@ type KanbanColumn = 'En attente' | 'En cours' | 'Terminé';
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterModule, DragDropModule],
+  imports: [RouterModule, SlicePipe, DatePipe],
   templateUrl: './dashboard.html',
   styleUrls: ['./dashboard.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class DashboardComponent implements OnInit, OnDestroy {
-  // ── State ──────────────────────────────────
-  currentUser: any = null;
-  allCards: KanbanCard[] = [];
-  myAnnonces: KanbanCard[] = [];
-  helpingAnnonces: KanbanCard[] = [];
+  private authService = inject(AuthService);
+  private annonceService = inject(AnnonceService);
+  private router = inject(Router);
 
-  activeTab: 'mine' | 'helping' = 'mine';
-  isLoading = true;
-  isScrolled = false;
-  isUpdating = false;
+  currentUser = signal<User | null>(null);
+  myAnnonces = signal<KanbanCard[]>([]);
+  helpingAnnonces = signal<KanbanCard[]>([]);
+  activeTab = signal<'mine' | 'helping'>('mine');
+  isLoading = signal(true);
+  isScrolled = signal(false);
+  isUpdating = signal(false);
+  draggingCard = signal<KanbanCard | null>(null);
+  dragOverColumn = signal<KanbanColumn | null>(null);
+  annonceToDelete = signal<number | null>(null);
 
-  // Drag state
-  draggingCard: KanbanCard | null = null;
-  dragOverColumn: KanbanColumn | null = null;
-  private updateToastTimer: any;
+  private updateToastTimer: ReturnType<typeof setTimeout> | null = null;
 
-  private destroy$ = new Subject<void>();
+  allCards = computed(() =>
+    this.activeTab() === 'mine' ? this.myAnnonces() : this.helpingAnnonces(),
+  );
 
-  constructor(
-    private authService: AuthService,
-    private router: Router,
-    private cdr: ChangeDetectorRef,
-  ) {}
+  columnEnAttente = computed(() => this.allCards().filter((c) => c.statut === 'En attente'));
+  columnEnCours = computed(() => this.allCards().filter((c) => c.statut === 'En cours'));
+  columnTermine = computed(() => this.allCards().filter((c) => c.statut === 'Terminé'));
 
-  // ── Lifecycle ──────────────────────────────
+  isAdmin = computed(() => this.authService.currentUser?.roles?.includes('ROLE_ADMIN') ?? false);
+
   ngOnInit(): void {
     this.authService.getCurrentUser().subscribe({
       next: (user) => {
-        this.currentUser = user;
+        this.currentUser.set(user);
         this.loadDashboard();
-        this.cdr.markForCheck();
       },
-      error: (err) => {
-        console.error('Erreur lors de la récupération du profil', err);
-        this.logout();
-      },
+      error: () => this.logout(),
     });
   }
 
   ngOnDestroy(): void {
-    this.destroy$.next();
-    this.destroy$.complete();
-    clearTimeout(this.updateToastTimer);
+    if (this.updateToastTimer) clearTimeout(this.updateToastTimer);
   }
 
   @HostListener('window:scroll')
   onScroll(): void {
-    const scrolled = window.scrollY > 20;
-    if (scrolled !== this.isScrolled) {
-      this.isScrolled = scrolled;
-      this.cdr.markForCheck();
-    }
+    this.isScrolled.set(window.scrollY > 20);
   }
 
-  get isAdmin(): boolean {
-    return this.authService.currentUser?.roles?.includes('ROLE_ADMIN') || false;
-  }
-
-  // ── Data Loading (API SYNC) ────────────────
   private loadDashboard(): void {
-    this.isLoading = true;
+    this.isLoading.set(true);
+    const user = this.currentUser();
 
-    this.authService.getAnnonces().subscribe({
-      next: (annonces: any[]) => {
-        const mappedCards: KanbanCard[] = annonces.map((a) => ({
-          ...a,
-          category: a.categorie?.nom || 'Général',
-          userName: a.createur?.prenom + ' ' + a.createur?.nom,
-          userAvatar: a.createur?.photoProfil,
-          commentsCount: a.commentaires?.length || 0,
-          _isMine: a.createur?.email === this.currentUser?.email,
-        }));
-
-        this.myAnnonces = mappedCards.filter((a) => a._isMine);
-
-        this.helpingAnnonces = mappedCards.filter((a) =>
-          a.helpers?.some((h: any) => h.email === this.currentUser?.email),
+    this.annonceService.getAnnonces().subscribe({
+      next: (annonces) => {
+        const mapped = annonces.map((a) => this.toKanbanCard(a, user));
+        this.myAnnonces.set(mapped.filter((c) => c._isMine));
+        this.helpingAnnonces.set(
+          mapped.filter((c) => c.helpers?.some((h) => h.email === user?.email) ?? false),
         );
-
-        this.rebuildCards();
-        this.isLoading = false;
-        this.cdr.markForCheck();
+        this.isLoading.set(false);
       },
-      error: (err: any) => {
-        console.error('Erreur de chargement', err);
-        this.isLoading = false;
-        this.cdr.markForCheck();
-      },
+      error: () => this.isLoading.set(false),
     });
   }
 
-  private rebuildCards(): void {
-    if (this.activeTab === 'mine') {
-      this.allCards = this.myAnnonces;
-    } else {
-      this.allCards = this.helpingAnnonces;
-    }
-    this.cdr.markForCheck();
+  private toKanbanCard(a: Annonce, user: User | null): KanbanCard {
+    return {
+      ...a,
+      category: a.categorie?.nom ?? 'Général',
+      userName: (a.createur?.prenom ?? '') + ' ' + (a.createur?.nom ?? ''),
+      userAvatar: a.createur?.photoProfil,
+      commentsCount: a.commentaires?.length ?? 0,
+      _isMine: a.createur?.email === user?.email,
+    };
   }
 
-  // ── Tab Switch ─────────────────────────────
   switchTab(tab: 'mine' | 'helping'): void {
-    this.activeTab = tab;
-    this.rebuildCards();
-  }
-
-  // ── Column Getter ──────────────────────────
-  getColumn(statut: KanbanColumn): KanbanCard[] {
-    return this.allCards.filter((c) => c.statut === statut);
+    this.activeTab.set(tab);
   }
 
   // ── Drag & Drop ────────────────────────────
   onDragStart(event: DragEvent, card: KanbanCard): void {
-    this.draggingCard = card;
+    this.draggingCard.set(card);
     event.dataTransfer?.setData('text/plain', String(card.id));
     event.dataTransfer!.effectAllowed = 'move';
-    setTimeout(() => this.cdr.markForCheck(), 0);
   }
 
   onDragEnd(): void {
-    this.draggingCard = null;
-    this.dragOverColumn = null;
-    this.cdr.markForCheck();
+    this.draggingCard.set(null);
+    this.dragOverColumn.set(null);
   }
 
   onDragOver(event: DragEvent): void {
     event.preventDefault();
     event.dataTransfer!.dropEffect = 'move';
-
     const col = (event.currentTarget as HTMLElement).dataset['column'] as KanbanColumn;
-    if (col !== this.dragOverColumn) {
-      this.dragOverColumn = col;
-      this.cdr.markForCheck();
+    if (col !== this.dragOverColumn()) {
+      this.dragOverColumn.set(col);
     }
   }
 
   onDragLeave(event: DragEvent): void {
     const rel = event.relatedTarget as HTMLElement | null;
     if (!rel || !(event.currentTarget as HTMLElement).contains(rel)) {
-      this.dragOverColumn = null;
-      this.cdr.markForCheck();
+      this.dragOverColumn.set(null);
     }
   }
 
   onDrop(event: DragEvent, targetColumn: KanbanColumn): void {
     event.preventDefault();
-    this.dragOverColumn = null;
+    this.dragOverColumn.set(null);
 
-    if (!this.draggingCard) return;
-    if (this.draggingCard.statut === targetColumn) {
-      this.draggingCard = null;
-      this.cdr.markForCheck();
+    const card = this.draggingCard();
+    if (!card || card.statut === targetColumn) {
+      this.draggingCard.set(null);
       return;
     }
 
-    const card = this.draggingCard;
     const previousCol = card.statut as KanbanColumn;
-    this.draggingCard = null;
+    this.draggingCard.set(null);
 
-    card.statut = targetColumn;
-    this.rebuildCards();
+    this.updateCardStatut(card.id, targetColumn);
     this.showUpdateToast();
 
-    // mise à jour dans la base de données (API)
-    this.authService.updateAnnonceStatut(card.id, targetColumn).subscribe({
+    this.annonceService.updateAnnonceStatut(card.id, targetColumn).subscribe({
       next: () => this.hideUpdateToast(),
-      error: (err) => {
-        // En cas d'erreur de connexion, on annule le mouvement
-        console.error('Erreur API lors du drag & drop', err);
-        card.statut = previousCol;
-        this.rebuildCards();
+      error: () => {
+        this.updateCardStatut(card.id, previousCol);
+        this.hideUpdateToast();
       },
     });
   }
 
-  // ── Toast ──────────────────────────────────
+  private updateCardStatut(cardId: number, newStatut: string): void {
+    const updateFn = (cards: KanbanCard[]) =>
+      cards.map((c) => (c.id === cardId ? { ...c, statut: newStatut } : c));
+    this.myAnnonces.update(updateFn);
+    this.helpingAnnonces.update(updateFn);
+  }
+
   private showUpdateToast(): void {
-    clearTimeout(this.updateToastTimer);
-    this.isUpdating = true;
-    this.cdr.markForCheck();
+    if (this.updateToastTimer) clearTimeout(this.updateToastTimer);
+    this.isUpdating.set(true);
   }
 
   private hideUpdateToast(): void {
-    this.updateToastTimer = setTimeout(() => {
-      this.isUpdating = false;
-      this.cdr.markForCheck();
-    }, 600);
+    this.updateToastTimer = setTimeout(() => this.isUpdating.set(false), 600);
   }
 
-  annonceToDelete: number | null = null;
-
-  initDelete(id: number) {
-    this.annonceToDelete = id;
+  initDelete(id: number): void {
+    this.annonceToDelete.set(id);
   }
 
-  cancelDelete() {
-    this.annonceToDelete = null;
+  cancelDelete(): void {
+    this.annonceToDelete.set(null);
   }
 
-  confirmDelete() {
-    if (this.annonceToDelete) {
-      const id = this.annonceToDelete;
+  confirmDelete(): void {
+    const id = this.annonceToDelete();
+    if (!id) return;
 
-      this.authService.deleteAnnonce(id).subscribe({
-        next: () => {
-          this.myAnnonces = this.myAnnonces.filter((a) => a.id !== id);
-          this.rebuildCards();
-          this.annonceToDelete = null;
-          this.cdr.markForCheck();
-        },
-        error: (err: any) => {
-          console.error('Erreur suppression', err);
-          this.annonceToDelete = null;
-        },
-      });
-    }
+    this.annonceService.deleteAnnonce(id).subscribe({
+      next: () => {
+        this.myAnnonces.update((cards) => cards.filter((a) => a.id !== id));
+        this.annonceToDelete.set(null);
+      },
+      error: () => this.annonceToDelete.set(null),
+    });
   }
 
-  // ── Auth ───────────────────────────────────
   logout(): void {
-    this.authService.logout(); // Adapté au cookie
+    this.authService.logout();
     this.router.navigate(['/']);
-  }
-
-  // ── Helpers ────────────────────────────────
-  trackById(_: number, item: { id: number }): number {
-    return item.id;
   }
 }

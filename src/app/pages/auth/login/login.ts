@@ -1,55 +1,53 @@
-import { Component, ChangeDetectorRef } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { RouterModule, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
+import { HttpErrorResponse } from '@angular/common/http';
 import { AuthService } from '../../../core/services/auth.service';
 
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule],
+  imports: [RouterModule, FormsModule],
   templateUrl: './login.html',
   styleUrls: ['./login.css'],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class LoginComponent {
-  email = '';
-  password = '';
-  errorMessage = '';
+  private authService = inject(AuthService);
+  private router = inject(Router);
 
-  constructor(
-    private auth: AuthService,
-    private router: Router,
-    private cdr: ChangeDetectorRef,
-  ) {}
+  email = signal('');
+  password = signal('');
+  errorMessage = signal('');
+  isSubmitting = signal(false);
 
-  onSubmit() {
-    this.errorMessage = '';
+  onSubmit(): void {
+    this.errorMessage.set('');
 
-    if (!this.email || !this.password) {
-      this.errorMessage = 'Veuillez remplir tous les champs.';
+    if (!this.email() || !this.password()) {
+      this.errorMessage.set('Veuillez remplir tous les champs.');
       return;
     }
 
-    this.auth.login({ username: this.email, password: this.password }).subscribe({
+    this.isSubmitting.set(true);
+
+    this.authService.login({ username: this.email(), password: this.password() }).subscribe({
       next: () => {
         this.router.navigate(['/app/dashboard']);
       },
-      error: (err) => {
-        console.error('Erreur API :', err);
+      error: (err: HttpErrorResponse) => {
+        this.isSubmitting.set(false);
 
         if (err.status === 401) {
           const serverError = err.error?.error || err.error?.message;
-
-          if (serverError && serverError.toLowerCase().includes('banni')) {
-            this.errorMessage = serverError;
+          if (serverError && String(serverError).toLowerCase().includes('banni')) {
+            this.errorMessage.set(serverError);
           } else {
-            this.errorMessage = 'Email ou mot de passe incorrect.';
+            this.errorMessage.set('Email ou mot de passe incorrect.');
           }
         } else {
-          this.errorMessage = 'Impossible de se connecter au serveur.';
+          this.errorMessage.set('Impossible de se connecter au serveur.');
         }
-
-        this.cdr.detectChanges();
       },
     });
   }
