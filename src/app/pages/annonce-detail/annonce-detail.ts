@@ -2,7 +2,7 @@ import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { AuthService } from '../../core/services/mock.service';
+import { AuthService } from '../../core/services/auth.service';
 
 @Component({
   selector: 'app-annonce-detail',
@@ -13,7 +13,7 @@ import { AuthService } from '../../core/services/mock.service';
 })
 export class AnnonceDetailComponent implements OnInit {
   annonce: any;
-  commentaires: any[] = []; // On va la remplir correctement !
+  commentaires: any[] = [];
   newCommentText = '';
   currentUser: any;
   isHelper = false;
@@ -121,7 +121,7 @@ export class AnnonceDetailComponent implements OnInit {
 
   proposerAide() {
     this.authService.aiderAnnonce(this.annonce.id).subscribe({
-      next: (res) => {
+      next: () => {
         this.isHelper = true;
         // Recharger l'annonce pour voir le message système "XXX a rejoint l'équipe"
         this.loadAnnonce();
@@ -129,23 +129,6 @@ export class AnnonceDetailComponent implements OnInit {
       error: (err) => {
         console.error('Erreur API :', err);
         alert(err.error?.erreur || 'Impossible de rejoindre cette annonce.');
-      },
-    });
-  }
-
-  seDesister() {
-    const motif =
-      prompt('Pour quelle raison devez-vous annuler votre aide ? (Optionnel)') ||
-      'Pas de motif précisé';
-
-    this.authService.desisterAnnonce(this.annonce.id, motif).subscribe({
-      next: () => {
-        this.isHelper = false;
-        this.loadAnnonce(); // Recharge l'annonce pour voir le message du bot
-      },
-      error: (err) => {
-        console.error('Erreur API :', err);
-        alert('Impossible de se désister.');
       },
     });
   }

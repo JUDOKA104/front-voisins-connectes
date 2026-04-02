@@ -2,8 +2,8 @@ import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, Router } from '@angular/router';
-import { AuthService } from '../../core/services/mock.service';
-import { Subject, Observable } from 'rxjs';
+import { AuthService } from '../../core/services/auth.service';
+import { Subject } from 'rxjs';
 
 @Component({
   selector: 'app-profile',
@@ -44,7 +44,7 @@ export class ProfileComponent implements OnInit {
         this.badges = user.badges || [];
         this.cdr.detectChanges();
       },
-      error: (err) => {
+      error: () => {
         this.authService.logout();
         this.router.navigate(['/']);
       },
@@ -70,16 +70,6 @@ export class ProfileComponent implements OnInit {
     this.hasUnsavedChanges = true;
   }
 
-  canDeactivate(): boolean | Observable<boolean> {
-    if (!this.hasUnsavedChanges) {
-      return true; // S'il n'y a rien à sauvegarder, on laisse passer direct
-    }
-
-    this.showUnsavedModal = true;
-    this.cdr.detectChanges();
-    return this.unsavedSubject.asObservable();
-  }
-
   confirmLeave() {
     this.showUnsavedModal = false;
     this.unsavedSubject.next(true); // Autorise la navigation
@@ -95,7 +85,6 @@ export class ProfileComponent implements OnInit {
     this.isErrorNotification = isError;
     this.cdr.detectChanges();
 
-    // On efface le timer précédent s'il y en avait un
     clearTimeout(this.toastTimer);
 
     // On cache le message après 4 secondes
@@ -107,7 +96,6 @@ export class ProfileComponent implements OnInit {
 
   saveProfile() {
     if (this.newPassword && this.newPassword !== this.confirmPassword) {
-      // On remplace le alert()
       this.showNotification('Les mots de passe ne correspondent pas !', true);
       return;
     }
@@ -119,8 +107,7 @@ export class ProfileComponent implements OnInit {
     if (this.selectedFile) formData.append('photoProfil', this.selectedFile);
 
     this.authService.updateProfile(formData).subscribe({
-      next: (res: any) => {
-        // On remplace le alert()
+      next: () => {
         this.showNotification('Vos modifications ont été enregistrées avec succès.', false);
         this.hasUnsavedChanges = false;
 
@@ -131,7 +118,6 @@ export class ProfileComponent implements OnInit {
         this.cdr.detectChanges();
       },
       error: (err) => {
-        // On remplace le alert()
         this.showNotification(err.error?.erreur || 'Erreur lors de la mise à jour.', true);
       },
     });

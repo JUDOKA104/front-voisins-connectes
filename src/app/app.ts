@@ -1,7 +1,7 @@
 import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { RouterLink, RouterOutlet, Router, NavigationEnd } from '@angular/router';
 import { CommonModule } from '@angular/common';
-import { AuthService } from './core/services/mock.service';
+import { AuthService } from './core/services/auth.service';
 import { filter } from 'rxjs/operators';
 
 @Component({

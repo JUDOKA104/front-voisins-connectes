@@ -9,8 +9,8 @@ import {
 import { Router, RouterModule } from '@angular/router';
 import { Subject } from 'rxjs';
 
-import { Annonce, User } from '../../core/models';
-import { AuthService } from '../../core/services/mock.service';
+import { Annonce } from '../../core/models';
+import { AuthService } from '../../core/services/auth.service';
 import { CommonModule } from '@angular/common';
 import { DragDropModule } from '@angular/cdk/drag-drop';
 
@@ -27,7 +27,6 @@ interface KanbanCard extends Annonce {
   _isMine?: boolean;
 }
 
-// ATTENTION : J'ai mis les VRAIS statuts de ton API Symfony ici !
 type KanbanColumn = 'En attente' | 'En cours' | 'Terminé';
 
 @Component({
@@ -36,7 +35,7 @@ type KanbanColumn = 'En attente' | 'En cours' | 'Terminé';
   imports: [CommonModule, RouterModule, DragDropModule],
   templateUrl: './dashboard.html',
   styleUrls: ['./dashboard.scss'],
-  changeDetection: ChangeDetectionStrategy.OnPush, // Très performant pour le drag & drop
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class DashboardComponent implements OnInit, OnDestroy {
   // ── State ──────────────────────────────────
@@ -198,12 +197,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
     const previousCol = card.statut as KanbanColumn;
     this.draggingCard = null;
 
-    // Mise à jour visuelle instantanée (Optimistic update)
     card.statut = targetColumn;
     this.rebuildCards();
     this.showUpdateToast();
 
-    // Vraie mise à jour dans la base de données (API)
+    // mise à jour dans la base de données (API)
     this.authService.updateAnnonceStatut(card.id, targetColumn).subscribe({
       next: () => this.hideUpdateToast(),
       error: (err) => {
@@ -227,15 +225,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
       this.isUpdating = false;
       this.cdr.markForCheck();
     }, 600);
-  }
-
-  // ── CRUD (API SYNC) ────────────────────────
-  openNewAnnonceModal(): void {
-    this.router.navigate(['/annonces/new']);
-  }
-
-  editAnnonce(card: KanbanCard): void {
-    this.router.navigate(['/annonces', card.id, 'edit']);
   }
 
   annonceToDelete: number | null = null;
@@ -269,7 +258,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   // ── Auth ───────────────────────────────────
   logout(): void {
-    this.authService.logout(); // Adapté au cookie de tout à l'heure
+    this.authService.logout(); // Adapté au cookie
     this.router.navigate(['/']);
   }
 

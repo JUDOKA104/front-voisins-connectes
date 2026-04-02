@@ -1,7 +1,3 @@
-// ════════════════════════════════════════════════
-// HOME COMPONENT — home.component.ts
-// ════════════════════════════════════════════════
-
 import {
   Component,
   OnInit,
@@ -10,8 +6,8 @@ import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
 } from '@angular/core';
-import { Subject, takeUntil, finalize } from 'rxjs';
-import { Annonce, Categorie, User, Commentaire } from '../../core/models';
+import { Subject } from 'rxjs';
+import { Annonce } from '../../core/models';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 
@@ -26,10 +22,6 @@ import { RouterModule } from '@angular/router';
 export class HomeComponent implements OnInit, OnDestroy {
   // ── State ──────────────────────────────────
   annonces: Annonce[] = [];
-  filteredAnnonces: Annonce[] = [];
-  categories: Categorie[] = [];
-  selectedCategorie: Categorie | null = null;
-  isLoading = true;
   isScrolled = false;
 
   // ── Static content ─────────────────────────
@@ -94,21 +86,5 @@ export class HomeComponent implements OnInit, OnDestroy {
       this.isScrolled = scrolled;
       this.cdr.markForCheck();
     }
-  }
-
-  // ── Filter ─────────────────────────────────
-  filterByCategorie(categorie: Categorie | null): void {
-    this.selectedCategorie = categorie;
-    if (!categorie) {
-      this.filteredAnnonces = this.annonces;
-    } else {
-      this.filteredAnnonces = this.annonces.filter((a) => a.categorie?.id === categorie.id);
-    }
-    this.cdr.markForCheck();
-  }
-
-  // ── Track function ─────────────────────────
-  trackById(_: number, item: { id: number }): number {
-    return item.id;
   }
 }

@@ -23,7 +23,7 @@
 
     blockquote {
       margin: auto;
-      font-family: var(--font-display);
+      font-family: var(--font-display), serif;
       font-size: clamp(2rem, 4vw, 3.5rem);
       line-height: var(--leading-tight);
       color: var(--paper-warm);
@@ -31,7 +31,7 @@
     }
 
     .auth-brand {
-      font-family: var(--font-display);
+      font-family: var(--font-display), serif;
       font-size: var(--text-xl);
       color: var(--paper);
       span { color: var(--accent); }
@@ -69,7 +69,6 @@
   p { color: var(--ink-60); margin-bottom: var(--sp-10); font-size: var(--text-lg); }
 }
 
-/* NOUVEAU : Alignement Prénom / Nom */
 .form-row {
   display: flex;
   gap: var(--sp-4);
@@ -159,7 +158,7 @@
   }
 }
 
-/* On s'assure que le wrapper de l'avatar a bien une marge s'il s'affiche */
+/* --- Bouton d'édition de photo --- */
 .register-photo-wrapper {
   margin-top: var(--sp-4);
   margin-bottom: var(--sp-4);

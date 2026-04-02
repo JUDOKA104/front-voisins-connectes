@@ -2,7 +2,7 @@ import { Component, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router, ActivatedRoute } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { AuthService } from '../../core/services/mock.service';
+import { AuthService } from '../../core/services/auth.service';
 
 @Component({
   selector: 'app-annonce-form',
@@ -60,7 +60,6 @@ export class AnnonceFormComponent {
       // Mode MODIFICATION
       this.authService.updateAnnonce(this.annonceId, payload).subscribe({
         next: () => {
-          console.log('Annonce modifiée !');
           this.router.navigate(['/app/dashboard']);
         },
         error: (err) => console.error(err),
@@ -69,7 +68,6 @@ export class AnnonceFormComponent {
       // Mode CRÉATION
       this.authService.createAnnonce(payload).subscribe({
         next: () => {
-          console.log('Annonce créée !');
           this.router.navigate(['/app/dashboard']);
         },
         error: (err) => console.error(err),

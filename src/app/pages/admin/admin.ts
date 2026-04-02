@@ -2,7 +2,7 @@ import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
-import { AuthService } from '../../core/services/mock.service';
+import { AuthService } from '../../core/services/auth.service';
 
 @Component({
   selector: 'app-admin',
@@ -60,7 +60,7 @@ export class AdminComponent implements OnInit {
         this.isSearching = false;
         this.cdr.detectChanges();
       },
-      error: (err) => (this.isSearching = false),
+      error: () => (this.isSearching = false),
     });
   }
 
@@ -80,19 +80,6 @@ export class AdminComponent implements OnInit {
         this.isSearching = false;
       },
     });
-  }
-
-  toggleBan(user: any) {
-    const action = user.isBanned ? 'débannir' : 'bannir';
-    if (confirm(`Voulez-vous vraiment ${action} ${user.prenom} ${user.nom} ?`)) {
-      this.authService.adminBanUser(user.id).subscribe({
-        next: (res: any) => {
-          user.isBanned = res.isBanned; // Met à jour l'affichage en direct
-          this.cdr.detectChanges();
-        },
-        error: (err) => alert("Erreur lors de l'opération de modération."),
-      });
-    }
   }
 
   initToggleBan(user: any) {
@@ -160,18 +147,5 @@ export class AdminComponent implements OnInit {
       },
       error: (err) => console.error(err),
     });
-  }
-
-  deleteAnnonce(id: number) {
-    if (confirm('Supprimer cette annonce définitivement (Modération) ?')) {
-      this.authService.adminDeleteAnnonce(id).subscribe({
-        next: () => {
-          this.selectedUserAnnonces = this.selectedUserAnnonces.filter((a) => a.id !== id);
-          this.loadStats(); // Met à jour le compteur global
-          this.cdr.detectChanges();
-        },
-        error: (err) => alert('Erreur de suppression'),
-      });
-    }
   }
 }

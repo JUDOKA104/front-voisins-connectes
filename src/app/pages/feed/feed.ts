@@ -1,7 +1,7 @@
 import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
-import { AuthService } from '../../core/services/mock.service';
+import { AuthService } from '../../core/services/auth.service';
 
 @Component({
   selector: 'app-feed',
@@ -58,19 +58,8 @@ export class FeedComponent implements OnInit {
     });
   }
 
-  toggleAccessibleFilter() {
-    this.showAccessibleOnly = !this.showAccessibleOnly;
-    this.applyFilters();
-  }
-
   toggleCertifiedFilter() {
     this.showCertifiedOnly = !this.showCertifiedOnly;
-    this.applyFilters();
-  }
-
-  resetFilters() {
-    this.showAccessibleOnly = false;
-    this.showCertifiedOnly = false;
     this.applyFilters();
   }
 

@@ -2,7 +2,7 @@ import { Component, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { AuthService } from '../../../core/services/mock.service';
+import { AuthService } from '../../../core/services/auth.service';
 
 @Component({
   selector: 'app-register',
@@ -69,8 +69,7 @@ export class RegisterComponent {
     formData.append('photoProfil', this.selectedFile);
 
     this.auth.register(formData).subscribe({
-      next: (response) => {
-        console.log('Succès API :', response);
+      next: () => {
         this.isRegistered = true;
         this.cdr.detectChanges();
       },
